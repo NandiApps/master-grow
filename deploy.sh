@@ -40,13 +40,15 @@ echo -e "${GREEN}✓ Pushed to GitHub${NC}"
 # Step 4: Deploy engine to Cloudflare Workers
 echo -e "${BLUE}[4/5]${NC} Deploying engine to Cloudflare Workers..."
 cd engine
-npm run deploy
+npm install wrangler --save-dev > /dev/null 2>&1
+npx wrangler deploy
 cd ..
 echo -e "${GREEN}✓ Engine deployed${NC}"
 
 # Step 5: Deploy frontend to Cloudflare Pages
 echo -e "${BLUE}[5/5]${NC} Deploying frontend to Cloudflare Pages..."
 cd frontend
+npm install wrangler --save-dev > /dev/null 2>&1
 npm run deploy
 cd ..
 echo -e "${GREEN}✓ Frontend deployed${NC}"

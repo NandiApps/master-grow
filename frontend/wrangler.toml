@@ -1,0 +1,20 @@
+name = "hydrogrow-frontend"
+type = "javascript"
+account_id = ""  # Add your Cloudflare account ID here
+project_name = "hydrogrow"
+
+[env.production]
+name = "hydrogrow-frontend-prod"
+routes = [
+  { pattern = "hydrogrow.com/*", zone_name = "hydrogrow.com" },
+  { pattern = "www.hydrogrow.com/*", zone_name = "hydrogrow.com" }
+]
+
+[build]
+command = "npm run build"
+cwd = "."
+watch_paths = ["src/**/*.{ts,tsx}"]
+
+[build.upload]
+format = "service-worker"
+main = "./dist/index.html"
