@@ -5,9 +5,11 @@ package-lock.json
 # Build outputs
 dist/
 build/
-*.js.map
-*.d.ts
-*.d.ts.map
+dist/**/*.js.map
+dist/**/*.d.ts
+dist/**/*.d.ts.map
+engine/dist/
+frontend/dist/
 
 # Frontend
 frontend/dist/
