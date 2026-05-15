@@ -3,20 +3,6 @@ main = "dist/server.js"
 compatibility_date = "2024-01-01"
 usage_model = "bundled"
 
-[env.production]
-name = "hydrogrow-engine-prod"
-route = "api.hydrogrow.com/api/*"
-zone_id = ""  # Add your Cloudflare zone ID here
-
-[[r2_buckets]]
-binding = "GAME_STATE"
-bucket_name = "hydrogrow-game-state"
-
 [build]
-command = "npm install && npm run build"
+command = "npm run build"
 cwd = "."
-main = "dist/server.js"
-
-[build.upload]
-format = "modules"
-main = "dist/server.js"
