@@ -6,5 +6,5 @@ compatibility_flags = ["nodejs_compat"]
 # KV Namespace for session persistence
 [[kv_namespaces]]
 binding = "GAME_STATE"
-id = "b1a9d3f8c4e2a0f6"
-preview_id = "b1a9d3f8c4e2a0f6"
+id = "c3beaa0c7d0147d5862d440ae2f6ce90"
+preview_id = "c3beaa0c7d0147d5862d440ae2f6ce90"
