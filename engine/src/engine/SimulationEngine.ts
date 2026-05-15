@@ -75,13 +75,65 @@ export class SimulationEngine {
     // Step 13: Tank chemistry drift
     this.updateTankChemistry(plant, tank);
 
-    // Step 14: Update yield modifiers (based on plant/tank state)
+    // Step 14: Update plant health (baseline decay + recovery bonus)
+    this.updatePlantHealth(plant, tank);
+
+    // Step 15: Update yield modifiers (based on plant/tank state)
     this.updateYieldModifiers(plant, tank, strain, parUmol);
 
-    // Step 15: Reset daily tracking
+    // Step 16: Reset daily tracking
     this.resetDailyTracking(plant);
 
     plant.gameDay++;
+  }
+
+  private updatePlantHealth(plant: PlantState, tank: TankState): void {
+    // Baseline daily maintenance cost: -0.5% per day (plants need constant care)
+    let healthChange = -0.5;
+
+    // Recovery bonus if plant is well-managed
+    const n = tank.macroNutrients.nitrogenNMgPerLiter;
+    const p = tank.macroNutrients.phosphorusPMgPerLiter;
+    const k = tank.macroNutrients.potassiumKMgPerLiter;
+    const pH = tank.waterChemistry.ph;
+
+    // Check if nutrients are in good ranges
+    const nutrientsGood =
+      n >= 100 && n <= 180 &&
+      p >= 30 && p <= 60 &&
+      k >= 100 && k <= 180;
+
+    // Check if pH is optimal
+    const pHGood = pH >= 5.5 && pH <= 6.5;
+
+    // Check if light is reasonable
+    const lightGood = plant.lightResponse.currentParUmol >= 400 && plant.lightResponse.currentParUmol <= 1000;
+
+    // Bonus for good management (+0.3% per day)
+    if (nutrientsGood && pHGood && lightGood) {
+      healthChange += 0.3;
+    }
+
+    // Additional recovery if photosynthesis rate is high
+    if (plant.lightResponse.photosynthesisRateRelative > 0.7) {
+      healthChange += 0.1;
+    }
+
+    // Penalty for stress conditions
+    if (plant.stressIndicators.totalStressPercent > 30) {
+      healthChange -= Math.min(1.0, plant.stressIndicators.totalStressPercent / 100);
+    }
+
+    // Penalty for disease
+    if (plant.visibleSymptoms.powderyMildew || plant.visibleSymptoms.botrytis) {
+      healthChange -= 1.0;
+    }
+
+    // Store the change for UI display
+    plant.physiology.plantHealthChangeTodayPercent = healthChange;
+
+    // Apply health change (cap at 0-100)
+    plant.physiology.plantHealthPercent = Math.max(0, Math.min(100, plant.physiology.plantHealthPercent + healthChange));
   }
 
   private updateLightSchedule(plant: PlantState, lightHoursOn: number): void {
@@ -478,43 +530,72 @@ export class SimulationEngine {
     const temp = tank.roomEnvironment.airTemperatureCelsius;
     const airFlow = tank.roomEnvironment.airChangesPerHour;
 
+    // Initialize counters if needed
+    if (!plant.stressIndicators.diseasePressureCounters) {
+      plant.stressIndicators.diseasePressureCounters = {};
+    }
+
     // Powdery mildew requires sustained bad conditions (>72 hours at >70% RH and <4 ACH)
     const pmConditionsActive = humidity > 70 && airFlow < 4;
     if (pmConditionsActive) {
-      if (!plant.stressIndicators.diseasePressureCounters) {
-        plant.stressIndicators.diseasePressureCounters = {};
-      }
       plant.stressIndicators.diseasePressureCounters.pmDaysExposed =
         (plant.stressIndicators.diseasePressureCounters.pmDaysExposed || 0) + 1;
 
+      // Show warning at day 1 of bad conditions
+      if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed === 1) {
+        if (!tank.warnings.includes("⚠️ Powdery mildew risk: High humidity & low airflow")) {
+          tank.warnings.push("⚠️ Powdery mildew risk: High humidity & low airflow");
+        }
+      }
+
+      // Show at-risk status at day 2
+      if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed === 2) {
+        if (!tank.alerts.includes("🟡 PM at-risk (2/3 days bad conditions)")) {
+          tank.alerts.push("🟡 PM at-risk (2/3 days bad conditions)");
+        }
+      }
+
+      // Symptoms appear at day 4
       if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed > 3) {
         plant.visibleSymptoms.powderyMildew = true;
+        if (!tank.alerts.includes("🔴 Powdery mildew detected")) {
+          tank.alerts.push("🔴 Powdery mildew detected");
+        }
       }
     } else {
-      plant.stressIndicators.diseasePressureCounters = {
-        ...plant.stressIndicators.diseasePressureCounters,
-        pmDaysExposed: 0
-      };
+      plant.stressIndicators.diseasePressureCounters.pmDaysExposed = 0;
       plant.visibleSymptoms.powderyMildew = false;
     }
 
     // Botrytis requires sustained bad conditions (>72 hours at >75% RH and <20°C)
     const botrytisConditionsActive = humidity > 75 && temp < 20;
     if (botrytisConditionsActive) {
-      if (!plant.stressIndicators.diseasePressureCounters) {
-        plant.stressIndicators.diseasePressureCounters = {};
-      }
       plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed =
         (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed || 0) + 1;
 
+      // Show warning at day 1
+      if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed === 1) {
+        if (!tank.warnings.includes("⚠️ Botrytis risk: High humidity & cold temps")) {
+          tank.warnings.push("⚠️ Botrytis risk: High humidity & cold temps");
+        }
+      }
+
+      // Show at-risk status at day 2
+      if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed === 2) {
+        if (!tank.alerts.includes("🟡 Botrytis at-risk (2/3 days bad conditions)")) {
+          tank.alerts.push("🟡 Botrytis at-risk (2/3 days bad conditions)");
+        }
+      }
+
+      // Symptoms appear at day 4
       if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed > 3) {
         plant.visibleSymptoms.botrytis = true;
+        if (!tank.alerts.includes("🔴 Botrytis detected")) {
+          tank.alerts.push("🔴 Botrytis detected");
+        }
       }
     } else {
-      plant.stressIndicators.diseasePressureCounters = {
-        ...plant.stressIndicators.diseasePressureCounters,
-        botrytilsDaysExposed: 0
-      };
+      plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed = 0;
       plant.visibleSymptoms.botrytis = false;
     }
 

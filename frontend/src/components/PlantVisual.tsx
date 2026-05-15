@@ -9,13 +9,15 @@ export function PlantVisual({ plant }: Props) {
   const stage = plant.growthStage.stage;
   const progress = plant.growthStage.stageProgressPercent;
   const height = plant.morphology.heightCm;
+  const healthPercent = plant.physiology.plantHealthPercent;
 
   const getStageName = (s: string) => {
     return s.replace(/_/g, ' ').toUpperCase();
   };
 
+  // Calculate visual effects based on plant condition
   const getPlantSVG = () => {
-    const healthOpacity = Math.max(0.6, plant.physiology.plantHealthPercent / 100);
+    const healthOpacity = Math.max(0.5, healthPercent / 100);
 
     switch (stage) {
       case 'seedling':
@@ -280,9 +282,21 @@ export function PlantVisual({ plant }: Props) {
     }
   };
 
+  // Calculate CSS filters for visual stress effects
+  const stressPercent = Math.max(0, 100 - healthPercent);
+  const saturateValue = Math.max(0.4, 1 - stressPercent / 200); // Desaturate under stress
+  const opacityValue = Math.max(0.7, 1 - stressPercent / 300); // Fade under stress
+
   return (
     <div className="plant-visual">
-      <div className="plant-container">{getPlantSVG()}</div>
+      <div
+        className="plant-container"
+        style={{
+          filter: `saturate(${saturateValue}) opacity(${opacityValue})`,
+        }}
+      >
+        {getPlantSVG()}
+      </div>
 
       <div className="plant-info">
         <div className="stage-label">

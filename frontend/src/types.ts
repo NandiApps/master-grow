@@ -99,8 +99,11 @@ export interface PlantState {
   };
   physiology: {
     chlorophyllPercent: number;
+    chlorophyllChangeTodayPercent: number;
     plantHealthPercent: number;
+    plantHealthChangeTodayPercent: number;
     rootMassDryWeightGrams: number;
+    rootDevelopmentPercent: number;
     biomassDryWeightGrams: number;
   };
   growthStage: {

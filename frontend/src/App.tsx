@@ -13,12 +13,34 @@ export function App() {
   useEffect(() => {
     const loadSession = async () => {
       const stored = SessionManager.getStoredSession();
-      if (stored) {
+
+      // Check for resume parameter in URL (?resume=gameId)
+      const params = new URLSearchParams(window.location.search);
+      const resumeGameId = params.get('resume') || params.get('gameId');
+
+      let gameToLoad = stored;
+
+      if (resumeGameId && !stored) {
+        // Try to resume from URL parameter
         try {
           const client = new GameClient(import.meta.env.VITE_API_URL || 'http://localhost:3000');
-          await client.loadGame(stored.gameId);
+          await client.loadGame(resumeGameId);
           setGameClient(client);
-          setSessionCode(stored.sessionCode);
+          setSessionCode(resumeGameId); // Use gameId as session code for display
+          setIsLoading(false);
+          return;
+        } catch (error) {
+          console.error('Failed to resume game from URL:', error);
+          // Fall through to normal startup
+        }
+      }
+
+      if (gameToLoad) {
+        try {
+          const client = new GameClient(import.meta.env.VITE_API_URL || 'http://localhost:3000');
+          await client.loadGame(gameToLoad.gameId);
+          setGameClient(client);
+          setSessionCode(gameToLoad.sessionCode);
         } catch (error) {
           console.error('Failed to resume game:', error);
           SessionManager.clearSession();
@@ -30,14 +52,14 @@ export function App() {
     loadSession();
   }, []);
 
-  const handleStartGame = async (playerName: string, strainId: string, difficulty: 'beginner' | 'normal' | 'hard') => {
+  const handleStartGame = async (playerName: string, strainId: string) => {
     try {
       setIsLoading(true);
       const client = new GameClient(import.meta.env.VITE_API_URL || 'http://localhost:3000');
       const gameId = await client.startGame({
         playerName,
         selectedStrainId: strainId,
-        difficulty,
+        difficulty: 'normal',
         electricityRateAudPerKwh: 0.28,
       });
 

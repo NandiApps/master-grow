@@ -85,7 +85,12 @@ export function MonitorPanel({ state }: Props) {
             <div className={`health-bar ${getHealthColor(plant.physiology.plantHealthPercent)}`}>
               <div style={{ width: `${plant.physiology.plantHealthPercent}%` }} />
             </div>
-            <span className="metric-value">{plant.physiology.plantHealthPercent.toFixed(0)}%</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="metric-value">{plant.physiology.plantHealthPercent.toFixed(0)}%</span>
+              <span className={`metric-change ${plant.physiology.plantHealthChangeTodayPercent >= 0 ? 'positive' : 'negative'}`}>
+                {plant.physiology.plantHealthChangeTodayPercent >= 0 ? '+' : ''}{plant.physiology.plantHealthChangeTodayPercent.toFixed(2)}%
+              </span>
+            </div>
           </div>
           <div className="metric">
             <span className="metric-label">Chlorophyll</span>
@@ -201,6 +206,47 @@ export function MonitorPanel({ state }: Props) {
             </span>
             <span className="metric-range">&gt;120</span>
           </div>
+        </div>
+      </div>
+
+      {/* Nutrient Sufficiency */}
+      <div className="monitor-section">
+        <h3>Nutrient Sufficiency</h3>
+        <div className="metrics-grid">
+          {(() => {
+            const n = tank.macroNutrients.nitrogenNMgPerLiter;
+            const p = tank.macroNutrients.phosphorusPMgPerLiter;
+            const k = tank.macroNutrients.potassiumKMgPerLiter;
+
+            // Calculate sufficiency based on recommended ranges
+            const nSufficiency = Math.min(100, (n / 150) * 100);
+            const pSufficiency = Math.min(100, (p / 45) * 100);
+            const kSufficiency = Math.min(100, (k / 150) * 100);
+            const avgSufficiency = (nSufficiency + pSufficiency + kSufficiency) / 3;
+
+            const getSufficiencyColor = (val: number) => {
+              if (val > 90) return '#4CAF50';
+              if (val > 70) return '#FFC107';
+              return '#F44336';
+            };
+
+            return (
+              <div className="metric" style={{ gridColumn: '1 / -1' }}>
+                <span className="metric-label">Overall NPK Balance</span>
+                <div className="bar" style={{ height: '24px', background: '#333', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                  <div
+                    style={{
+                      width: `${avgSufficiency}%`,
+                      height: '100%',
+                      background: getSufficiencyColor(avgSufficiency),
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+                <span className="metric-value">{avgSufficiency.toFixed(0)}%</span>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

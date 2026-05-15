@@ -3,6 +3,7 @@ import { GameClient } from '../client/GameClient';
 import { GameStateResponse, GameDayActionRequest } from '../types';
 import { MonitorPanel } from '../components/MonitorPanel';
 import { ControlPanel } from '../components/ControlPanel';
+import { PlantStatusCard } from '../components/PlantStatusCard';
 import { TrichomeInspector } from '../components/TrichomeInspector';
 import { SessionModal } from '../components/SessionModal';
 import { HarvestScreen } from '../components/HarvestScreen';
@@ -132,11 +133,13 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         </div>
         <div className="header-buttons">
           <button className="session-btn" onClick={() => setShowSessionModal(true)}>
-            Code: {sessionCode}
+            💾 Save Game
           </button>
           <button className="quit-btn" onClick={onQuit}>✕</button>
         </div>
       </div>
+
+      <PlantStatusCard state={state} />
 
       <MonitorPanel state={state} />
 

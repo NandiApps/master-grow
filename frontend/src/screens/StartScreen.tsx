@@ -4,13 +4,12 @@ import { StrainGenetics } from '../types';
 import '../styles/StartScreen.css';
 
 interface Props {
-  onStartGame: (playerName: string, strainId: string, difficulty: 'beginner' | 'normal' | 'hard') => void;
+  onStartGame: (playerName: string, strainId: string) => void;
 }
 
 export function StartScreen({ onStartGame }: Props) {
   const [playerName, setPlayerName] = useState('');
   const [selectedStrain, setSelectedStrain] = useState('');
-  const [difficulty, setDifficulty] = useState<'beginner' | 'normal' | 'hard'>('beginner');
   const [strains, setStrains] = useState<StrainGenetics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export function StartScreen({ onStartGame }: Props) {
       setError('Please fill in all fields');
       return;
     }
-    onStartGame(playerName, selectedStrain, difficulty);
+    onStartGame(playerName, selectedStrain);
   };
 
   const selectedStrainData = strains.find(s => s.id === selectedStrain);
@@ -114,22 +113,6 @@ export function StartScreen({ onStartGame }: Props) {
                 <p className="dominant">Dominant terpene: {selectedStrainData.terpeneProfile.dominant}</p>
               </div>
             )}
-          </div>
-
-          <div className="form-group">
-            <label>Difficulty</label>
-            <div className="difficulty-buttons">
-              {(['beginner', 'normal', 'hard'] as const).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  className={`difficulty-btn ${difficulty === level ? 'active' : ''}`}
-                  onClick={() => setDifficulty(level)}
-                >
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
-                </button>
-              ))}
-            </div>
           </div>
 
           {error && <div className="error-message">{error}</div>}
