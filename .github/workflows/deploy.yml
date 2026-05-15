@@ -55,4 +55,4 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: hydrogrow
           directory: frontend/dist
-          productionBranch: main
+          branch: main
