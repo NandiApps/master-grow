@@ -1,9 +1,9 @@
 /**
  * HydroGrow API Server
- * Express.js REST API for the simulation engine
+ * Hono REST API for the simulation engine (optimized for Cloudflare Workers)
  */
 
-import express, { Request, Response } from "express";
+import { Hono } from "hono";
 import { GameManager } from "./engine/GameManager";
 import {
   StartGameRequest,
@@ -13,11 +13,7 @@ import {
 import { listStrains } from "./data/strains";
 import { listAdditives } from "./data/additives";
 
-const app = express();
-const port = process.env.PORT || 3000;
-
-// Middleware
-app.use(express.json());
+const app = new Hono();
 
 // Game manager instances (in production, use sessions/database)
 const gameManagers = new Map<string, GameManager>();
@@ -25,153 +21,138 @@ const gameManagers = new Map<string, GameManager>();
 // ==================== ENDPOINTS ====================
 
 // Health check
-app.get("/health", (req: Request, res: Response) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/health", (c) => {
+  return c.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // Start a new game
-app.post("/api/game/start", (req: Request, res: Response) => {
+app.post("/api/game/start", async (c) => {
   try {
-    const request: StartGameRequest = req.body;
+    const request: StartGameRequest = await c.req.json();
     const manager = new GameManager();
     const response = manager.startGame(request);
-    
+
     gameManagers.set(response.gameState.gameId, manager);
-    res.json(response);
+    return c.json(response);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // Execute a game day
-app.post("/api/game/:gameId/day", (req: Request, res: Response) => {
+app.post("/api/game/:gameId/day", async (c) => {
   try {
-    const { gameId } = req.params;
+    const { gameId } = c.req.param();
     const manager = gameManagers.get(gameId);
-    
+
     if (!manager) {
-      return res.status(404).json({ error: "Game not found" });
+      return c.json({ error: "Game not found" }, 404);
     }
 
-    const actions: GameDayActionRequest = req.body;
+    const actions: GameDayActionRequest = await c.req.json();
     const response = manager.executeGameDay(actions);
-    res.json(response);
+    return c.json(response);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // Get current game state
-app.get("/api/game/:gameId/state", (req: Request, res: Response) => {
+app.get("/api/game/:gameId/state", (c) => {
   try {
-    const { gameId } = req.params;
+    const { gameId } = c.req.param();
     const manager = gameManagers.get(gameId);
-    
+
     if (!manager) {
-      return res.status(404).json({ error: "Game not found" });
+      return c.json({ error: "Game not found" }, 404);
     }
 
     const gameState = manager.getState();
     const plant = manager.getPlant();
     const tank = manager.getTank();
 
-    res.json({ gameState, plant, tank, timestamp: new Date().toISOString() });
+    return c.json({ gameState, plant, tank, timestamp: new Date().toISOString() });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // Harvest the plant
-app.post("/api/game/:gameId/harvest", (req: Request, res: Response) => {
+app.post("/api/game/:gameId/harvest", async (c) => {
   try {
-    const { gameId } = req.params;
+    const { gameId } = c.req.param();
     const manager = gameManagers.get(gameId);
-    
+
     if (!manager) {
-      return res.status(404).json({ error: "Game not found" });
+      return c.json({ error: "Game not found" }, 404);
     }
 
-    const harvestData: HarvestRequest = req.body;
+    const harvestData: HarvestRequest = await c.req.json();
     const result = manager.harvest(harvestData);
-    res.json(result);
+    return c.json(result);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // List available strains
-app.get("/api/strains", (req: Request, res: Response) => {
+app.get("/api/strains", (c) => {
   try {
     const strains = listStrains();
-    res.json({ strains, count: strains.length });
+    return c.json({ strains, count: strains.length });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // Get specific strain
-app.get("/api/strains/:strainId", (req: Request, res: Response) => {
+app.get("/api/strains/:strainId", (c) => {
   try {
-    const { strainId } = req.params;
+    const { strainId } = c.req.param();
     const strains = listStrains();
     const strain = strains.find((s) => s.id === strainId);
-    
+
     if (!strain) {
-      return res.status(404).json({ error: "Strain not found" });
+      return c.json({ error: "Strain not found" }, 404);
     }
-    
-    res.json(strain);
+
+    return c.json(strain);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // List available additives
-app.get("/api/additives", (req: Request, res: Response) => {
+app.get("/api/additives", (c) => {
   try {
     const additives = listAdditives();
-    res.json({ additives, count: additives.length });
+    return c.json({ additives, count: additives.length });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // Get specific additive
-app.get("/api/additives/:additiveId", (req: Request, res: Response) => {
+app.get("/api/additives/:additiveId", (c) => {
   try {
-    const { additiveId } = req.params;
+    const { additiveId } = c.req.param();
     const additives = listAdditives();
     const additive = additives.find((a) => a.id === additiveId);
-    
+
     if (!additive) {
-      return res.status(404).json({ error: "Additive not found" });
+      return c.json({ error: "Additive not found" }, 404);
     }
-    
-    res.json(additive);
+
+    return c.json(additive);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    return c.json({ error: error.message }, 400);
   }
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: "Endpoint not found" });
+app.all("*", (c) => {
+  return c.json({ error: "Endpoint not found" }, 404);
 });
 
 // Export for Cloudflare Workers
-export default {
-  fetch: app,
-};
-
-// Also support Node.js local development
-if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-  app.listen(port, () => {
-    console.log(`HydroGrow API running on http://localhost:${port}`);
-    console.log(`POST   /api/game/start - Start new game`);
-    console.log(`POST   /api/game/:gameId/day - Execute game day`);
-    console.log(`GET    /api/game/:gameId/state - Get game state`);
-    console.log(`POST   /api/game/:gameId/harvest - Harvest plant`);
-    console.log(`GET    /api/strains - List all strains`);
-    console.log(`GET    /api/additives - List all additives`);
-  });
-}
+export default app;
