@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { GameClient } from '../client/GameClient';
 import { AdditiveProduct } from '../types';
 import '../styles/ControlPanel.css';

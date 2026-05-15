@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { SessionManager } from '../utils/SessionManager';
 import '../styles/SessionModal.css';
 

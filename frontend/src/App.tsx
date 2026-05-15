@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { GameClient } from './client/GameClient';
 import { StartScreen } from './screens/StartScreen';
 import { GameScreen } from './screens/GameScreen';

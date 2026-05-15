@@ -82,6 +82,12 @@ export interface GameNotification {
   severity: 'info' | 'warning' | 'alert';
 }
 
+export interface TrichomeMaturity {
+  clearTrichomesPercent: number;
+  cloudyTrichomesPercent: number;
+  amberTrichomesPercent: number;
+}
+
 export interface PlantState {
   plantId: string;
   gameDay: number;
@@ -120,11 +126,7 @@ export interface PlantState {
     cbnAccumulationPercent: number;
     thcEquivalentPercentIfHarvested: number;
   };
-  trichomeMaturity: {
-    clearTrichomesPercent: number;
-    cloudyTrichomesPercent: number;
-    amberTrichomesPercent: number;
-  };
+  trichomeMaturity: TrichomeMaturity;
   visibleSymptoms: {
     nitrogenDeficiency: boolean;
     phosphorusDeficiency: boolean;
@@ -200,6 +202,7 @@ export interface AdditiveProduct {
   name: string;
   type: 'silicon' | 'kelp' | 'chitosan' | 'meija';
   costAud: number;
+  bottleSizeMl: number;
   dosagePerTank20L: number;
   applicationFrequencyDays: number;
 }

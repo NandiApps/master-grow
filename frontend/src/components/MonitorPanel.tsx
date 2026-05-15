@@ -1,4 +1,3 @@
-import React from 'react';
 import { GameStateResponse } from '../types';
 import '../styles/MonitorPanel.css';
 

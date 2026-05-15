@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { GameClient } from '../client/GameClient';
 import { GameStateResponse, GameDayActionRequest } from '../types';
-import { SessionManager } from '../utils/SessionManager';
 import { MonitorPanel } from '../components/MonitorPanel';
 import { ControlPanel } from '../components/ControlPanel';
 import { TrichomeInspector } from '../components/TrichomeInspector';
@@ -54,7 +53,10 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         lightScheduleHoursOff: 24 - lightHours,
         waterTemperatureTarget: temperature,
         humidityTarget: humidity,
-        additiveApplications: selectedAdditives,
+        additiveApplications: selectedAdditives.map(app => ({
+          additiveId: app.id,
+          doseMl: app.doseMl,
+        })),
       };
 
       const newState = await gameClient.executeGameDay(actions);
