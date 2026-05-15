@@ -57,9 +57,24 @@ export function PlantStatusCard({ state }: Props) {
     return recommendations;
   };
 
+  // Get grow cycle milestones
+  const getMilestones = () => {
+    const cycle = gameState.cycleInformation;
+    const currentDay = gameState.currentGameDay;
+    const milestones = [
+      { day: 0, label: 'Seed Start', emoji: '🌱', passed: true },
+      { day: 3, label: 'Germination', emoji: '🥚', passed: currentDay >= 3 },
+      { day: 7, label: 'Seedling→Veg', emoji: '🌿', passed: currentDay >= 7 },
+      { day: 28, label: 'Flowering Start', emoji: '🌸', passed: currentDay >= 28 },
+      { day: cycle.expectedHarvestDay, label: 'Harvest Ready', emoji: '🌾', passed: currentDay >= cycle.expectedHarvestDay },
+    ];
+    return milestones;
+  };
+
   const status = getStatus();
   const daysToHarvest = getDaysToHarvest();
   const recommendations = getRecommendations();
+  const milestones = getMilestones();
   const profit = gameState.economics.cumulativeProfitAud;
   const profitColor = profit >= 0 ? 'positive' : 'negative';
 
@@ -99,6 +114,19 @@ export function PlantStatusCard({ state }: Props) {
             <li key={i}>{rec}</li>
           ))}
         </ul>
+      </div>
+
+      <div className="milestones">
+        <h4>🎯 Grow Cycle Milestones</h4>
+        <div className="milestones-list">
+          {milestones.map((m, i) => (
+            <div key={i} className={`milestone ${m.passed ? 'passed' : ''}`}>
+              <span className="milestone-day">Day {m.day}</span>
+              <span className="milestone-emoji">{m.emoji}</span>
+              <span className="milestone-label">{m.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
