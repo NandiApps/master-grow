@@ -1,0 +1,220 @@
+.monitor-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.monitor-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.monitor-section h3 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.stage-display {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.stage-emoji {
+  font-size: 48px;
+}
+
+.stage-info {
+  flex: 1;
+}
+
+.stage-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #27ae60);
+}
+
+.progress-text {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.metric-growth {
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.metric-range {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.health-bar {
+  height: 20px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.health-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #27ae60);
+  transition: width 0.3s ease;
+}
+
+.health-bar.health-poor > div {
+  background: linear-gradient(90deg, var(--warning), #e67e22);
+}
+
+.health-bar.health-critical > div {
+  background: linear-gradient(90deg, var(--danger), #c0392b);
+}
+
+.cannabinoid-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cannabinoid {
+  display: grid;
+  grid-template-columns: 50px 1fr 50px;
+  align-items: center;
+  gap: 12px;
+}
+
+.cannabinoid label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cannabinoid .bar {
+  height: 20px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cannabinoid .fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.cannabinoid .fill.thca {
+  background: linear-gradient(90deg, #ff6b6b, #ee5a6f);
+}
+
+.cannabinoid .fill.cbda {
+  background: linear-gradient(90deg, #4ecdc4, #44a08d);
+}
+
+.cannabinoid .fill.cbn {
+  background: linear-gradient(90deg, #f9ca24, #f0932b);
+}
+
+.cannabinoid span {
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.warnings-section {
+  border-left: 4px solid var(--danger);
+}
+
+.warnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warning-item {
+  background: rgba(231, 76, 60, 0.1);
+  border-left: 3px solid var(--danger);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .monitor-panel {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .monitor-section {
+    padding: 12px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-display {
+    gap: 12px;
+  }
+
+  .stage-emoji {
+    font-size: 36px;
+  }
+}

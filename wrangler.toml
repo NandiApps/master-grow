@@ -1,0 +1,29 @@
+name = "hydrogrow-api"
+type = "javascript"
+main = "dist/server.js"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+[env.production]
+name = "hydrogrow-api-prod"
+routes = [
+  { pattern = "api.hydrogrow.workers.dev/*", zone_name = "hydrogrow.workers.dev" }
+]
+
+[env.staging]
+name = "hydrogrow-api-staging"
+workers_dev = true
+
+[[triggers.crons]]
+cron = "0 */6 * * *"
+
+[build]
+command = "npm run build"
+watch_paths = ["src/**/*.ts"]
+cwd = "engine"
+
+[build.upload]
+format = "modules"
+
+[env.production.triggers]
+crons = ["0 */6 * * *"]

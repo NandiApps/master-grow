@@ -1,0 +1,229 @@
+.trichome-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+
+.trichome-modal {
+  width: 100%;
+  max-width: 500px;
+  background: var(--card);
+  border-radius: 16px 16px 0 0;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--bg);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.modal-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trichome-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.trichome-display {
+  width: 200px;
+  height: 200px;
+  background: var(--bg);
+  border-radius: 50%;
+  padding: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.trichome-circle {
+  width: 100%;
+  height: 100%;
+}
+
+.trichome-legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.legend-color {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.trichome-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--bg);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-item label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.control-item .slider {
+  cursor: pointer;
+}
+
+.amber-display {
+  background: var(--card);
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.recommendation-box {
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.recommendation-box h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.recommendation-box p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.cancel-btn,
+.harvest-btn {
+  flex: 1;
+  padding: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 6px;
+}
+
+.cancel-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.cancel-btn:hover {
+  border-color: var(--text-muted);
+}
+
+.harvest-btn {
+  background: var(--warning);
+  color: black;
+}
+
+.harvest-btn:hover:not(:disabled) {
+  background: #e67e22;
+}
+
+.harvest-btn:disabled {
+  opacity: 0.5;
+}
+
+@media (max-width: 480px) {
+  .trichome-modal {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-content {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .trichome-display {
+    width: 160px;
+    height: 160px;
+  }
+}
