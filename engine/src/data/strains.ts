@@ -1,9 +1,47 @@
 /**
  * ILGM Strain Database
  * All data from STEP 3 research - real strains with verified characteristics
+ * Nutrient thresholds based on 2024-2025 cannabis hydroponic research
+ * Sources: Lotus Nutrients, Grow Weed Easy, Coco For Cannabis, I Love Growing Marijuana
  */
 
 import { StrainGenetics } from "../types";
+
+// Default nutrient thresholds based on research (strain-adjustable)
+const DEFAULT_NUTRIENT_THRESHOLDS = {
+  vegetative: {
+    npkRatio: "3:1:2" as const,
+    ecMin: 1.3,
+    ecMax: 1.7,
+    ppmMin: 800,
+    ppmMax: 900,
+    nMin: 160,
+    nMax: 200,
+    pMin: 30,
+    pMax: 60,
+    kMin: 60,
+    kMax: 117,
+  },
+  flowering: {
+    npkRatio: "1:3:2" as const,
+    ecMin: 1.6,
+    ecMax: 2.0,
+    ppmMin: 800,
+    ppmMax: 1100,
+    nMin: 50,
+    nMax: 100,
+    pMin: 60,
+    pMax: 90,
+    kMin: 117,
+    kMax: 175,
+  },
+  ph: { min: 5.5, optimal: 5.7, max: 6.5 },
+  temperature: { min: 20, max: 26 },
+  humidity: {
+    vegetative: { min: 40, max: 60 },
+    flowering: { min: 40, max: 50 },
+  },
+};
 
 export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
   "skywalker-og": {
@@ -31,6 +69,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "relaxing_sedating",
     responsivityToChitosan: 0.65,
     parToleranceMax: 950,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "godfather-og": {
     id: "godfather-og",
@@ -57,6 +96,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "heavy_potent",
     responsivityToChitosan: 0.72,
     parToleranceMax: 1000,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "blue-dream": {
     id: "blue-dream",
@@ -83,6 +123,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "balanced_euphoric",
     responsivityToChitosan: 0.7,
     parToleranceMax: 1050,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "granddaddy-purple": {
     id: "granddaddy-purple",
@@ -109,6 +150,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "heavy_sleepy",
     responsivityToChitosan: 0.68,
     parToleranceMax: 950,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "super-lemon-haze": {
     id: "super-lemon-haze",
@@ -135,6 +177,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "energetic_uplifting",
     responsivityToChitosan: 0.62,
     parToleranceMax: 1000,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "gg4-gorilla-glue": {
     id: "gg4-gorilla-glue",
@@ -161,6 +204,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "heavy_creative",
     responsivityToChitosan: 0.78,
     parToleranceMax: 1100,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "bruce-banner": {
     id: "bruce-banner",
@@ -187,6 +231,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "balanced_potent",
     responsivityToChitosan: 0.85,
     parToleranceMax: 1100,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "girl-scout-cookies": {
     id: "girl-scout-cookies",
@@ -213,6 +258,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "euphoric_sweet",
     responsivityToChitosan: 0.82,
     parToleranceMax: 1050,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "og-kush-auto": {
     id: "og-kush-auto",
@@ -239,6 +285,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "heavy_relaxing",
     responsivityToChitosan: 0.6,
     parToleranceMax: 1000,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "blue-dream-auto": {
     id: "blue-dream-auto",
@@ -265,6 +312,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "balanced_uplifting",
     responsivityToChitosan: 0.55,
     parToleranceMax: 1000,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
   "bruce-banner-auto": {
     id: "bruce-banner-auto",
@@ -291,6 +339,7 @@ export const STRAINS_DATABASE: Record<string, StrainGenetics> = {
     effectProfile: "balanced_potent",
     responsivityToChitosan: 0.8,
     parToleranceMax: 1150,
+    nutrientThresholds: DEFAULT_NUTRIENT_THRESHOLDS,
   },
 };
 

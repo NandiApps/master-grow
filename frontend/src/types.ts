@@ -198,6 +198,40 @@ export interface StrainGenetics {
   };
   responsivityToChitosan: number;
   parToleranceMax: number;
+  nutrientThresholds: {
+    vegetative: {
+      npkRatio: "3:1:2";
+      ecMin: number;
+      ecMax: number;
+      ppmMin: number;
+      ppmMax: number;
+      nMin: number;
+      nMax: number;
+      pMin: number;
+      pMax: number;
+      kMin: number;
+      kMax: number;
+    };
+    flowering: {
+      npkRatio: "1:3:2";
+      ecMin: number;
+      ecMax: number;
+      ppmMin: number;
+      ppmMax: number;
+      nMin: number;
+      nMax: number;
+      pMin: number;
+      pMax: number;
+      kMin: number;
+      kMax: number;
+    };
+    ph: { min: number; optimal: number; max: number };
+    temperature: { min: number; max: number };
+    humidity: {
+      vegetative: { min: number; max: number };
+      flowering: { min: number; max: number };
+    };
+  };
 }
 
 export interface AdditiveProduct {

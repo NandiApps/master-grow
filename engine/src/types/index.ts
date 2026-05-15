@@ -30,6 +30,41 @@ export interface StrainGenetics {
   effectProfile: string;
   responsivityToChitosan: number;
   parToleranceMax: number;
+  // Nutrient thresholds (strain-specific optimal ranges)
+  nutrientThresholds: {
+    // Vegetative stage ranges
+    vegetative: {
+      npkRatio: "3:1:2";
+      ecMin: number; // 1.3
+      ecMax: number; // 1.7
+      ppmMin: number; // 800
+      ppmMax: number; // 900
+      nMin: number; // 160
+      nMax: number; // 200
+      pMin: number; // 30
+      pMax: number; // 60
+      kMin: number; // 60
+      kMax: number; // 117
+    };
+    // Flowering stage ranges
+    flowering: {
+      npkRatio: "1:3:2";
+      ecMin: number; // 1.6
+      ecMax: number; // 2.0
+      ppmMin: number; // 800
+      ppmMax: number; // 1100
+      nMin: number; // 50
+      nMax: number; // 100
+      pMin: number; // 60
+      pMax: number; // 90
+      kMin: number; // 117
+      kMax: number; // 175
+    };
+    // Universal thresholds
+    ph: { min: number; optimal: number; max: number }; // 5.5 - 5.7 - 6.5
+    temperature: { min: number; max: number }; // 20-26
+    humidity: { vegetative: { min: number; max: number }; flowering: { min: number; max: number } }; // 40-60 veg, 40-50 flower
+  };
 }
 
 // ==================== ADDITIVE PRODUCTS ====================
