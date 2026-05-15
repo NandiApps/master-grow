@@ -4,6 +4,7 @@
  */
 
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { GameManager } from "./engine/GameManager";
 import {
   StartGameRequest,
@@ -14,6 +15,9 @@ import { listStrains } from "./data/strains";
 import { listAdditives } from "./data/additives";
 
 const app = new Hono();
+
+// CORS middleware - allow requests from Pages
+app.use("*", cors());
 
 // Game manager instances (in production, use sessions/database)
 const gameManagers = new Map<string, GameManager>();
