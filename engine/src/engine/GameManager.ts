@@ -11,6 +11,7 @@ import {
   StartGameRequest,
   GameDayActionRequest,
   HarvestRequest,
+  HarvestAssessment,
   GameStateResponse,
   PlantMorphology,
   PlantPhysiology,
@@ -31,7 +32,8 @@ import {
   CycleInformation,
 } from "../types";
 import { SimulationEngine } from "./SimulationEngine";
-import { getStrain, listStrains } from "../data/strains";
+import { HarvestAssessmentEngine } from "./HarvestAssessmentEngine";
+import { getStrain, getAllStrains } from "../data/strains";
 import { getAdditive, listAdditives } from "../data/additives";
 
 export class GameManager {
@@ -195,6 +197,15 @@ export class GameManager {
       additiveHistory: [],
       nutrientUptakeToday: { nMg: 0, pMg: 0, kMg: 0, caMg: 0, mgMg: 0, siMg: 0 },
       cumulativeYieldEstimateGrams: strain.baseYieldGrams,
+      yieldTracking: {
+        currentEstimateGrams: strain.yieldProfile.yieldGramsTypical,
+        peakYieldDay: null,
+        peakYieldGrams: 0,
+        harvestQualityScore: 0,
+        qualityTier: "C",
+        daysSincePeak: 0,
+        qualityLossPercent: 0,
+      },
       yieldModifiers: {
         geneticBase: 1.0,
         healthFactor: 1.0,
@@ -410,70 +421,6 @@ export class GameManager {
     return this.getGameState();
   }
 
-  harvest(request: HarvestRequest): any {
-    if (!this.gameState || !this.plantState || !this.tankState) {
-      throw new Error("Game not started");
-    }
-
-    const strain = getStrain(this.plantState.strainId);
-    
-    // Calculate final yield based on trichome quality
-    const totalTrichomes =
-      request.clearTrichomesPercent +
-      request.cloudyTrichomesPercent +
-      request.amberTrichomesPercent;
-
-    // Quality multiplier based on trichome profile
-    let qualityMultiplier = 1.0;
-    let harvestQuality = "standard";
-
-    if (request.cloudyTrichomesPercent > 60 && request.amberTrichomesPercent < 10) {
-      qualityMultiplier = 1.2; // Peak potency
-      harvestQuality = "premium";
-    } else if (request.amberTrichomesPercent > 30) {
-      qualityMultiplier = 1.1; // Aged, more sedating
-      harvestQuality = "aged";
-    }
-
-    // Apply all yield modifiers
-    const finalYield = Math.round(
-      strain.baseYieldGrams *
-        this.plantState.yieldModifiers.geneticBase *
-        this.plantState.yieldModifiers.healthFactor *
-        this.plantState.yieldModifiers.nutrientBalanceFactor *
-        this.plantState.yieldModifiers.lightEfficiencyFactor *
-        this.plantState.yieldModifiers.stressPenaltyFactor *
-        qualityMultiplier
-    );
-
-    const revenue = finalYield * strain.marketPricePerGram;
-    const profit = revenue - this.gameState.economics.totalSpentAud;
-
-    // Update state
-    this.gameState.cycleInformation.harvestStatus = "harvested";
-    this.gameState.cycleInformation.harvestDay = this.gameState.currentGameDay;
-    this.gameState.cycleInformation.finalYieldGrams = finalYield;
-    this.gameState.cycleInformation.finalYieldQuality = harvestQuality;
-
-    this.gameState.economics.currentCashAud += revenue;
-    this.gameState.economics.totalRevenueAud += revenue;
-    this.gameState.economics.cumulativeProfitAud = profit;
-
-    this.plantState.cumulativeYieldEstimateGrams = finalYield;
-    this.gameState.gameStatus = "completed";
-
-    return {
-      finalYieldGrams: finalYield,
-      harvestQuality,
-      revenue: revenue.toFixed(2),
-      profit: profit.toFixed(2),
-      trichomeBreakdown: {
-        clear: request.clearTrichomesPercent,
-        cloudy: request.cloudyTrichomesPercent,
-        amber: request.amberTrichomesPercent,
-      },
-    };
-  }
 
   private getGameState(): GameStateResponse {
     if (!this.gameState || !this.plantState || !this.tankState) {
@@ -520,5 +467,53 @@ export class GameManager {
       throw new Error(`Failed to deserialize game state: ${error}`);
     }
     return manager;
+  }
+
+  harvest(): HarvestAssessment {
+    if (!this.gameState || !this.plantState || !this.tankState) {
+      throw new Error("Game not initialized");
+    }
+
+    if (!this.plantState.flowering.floweringInitiated) {
+      throw new Error("Plant has not started flowering yet");
+    }
+
+    // Use HarvestAssessmentEngine to calculate complete assessment
+    const assessmentEngine = new HarvestAssessmentEngine();
+    const assessment = assessmentEngine.calculateHarvestAssessment(
+      this.plantState,
+      this.tankState
+    );
+
+    // Update game state with harvest results
+    this.gameState.cycleInformation.harvestDay = this.gameState.currentGameDay;
+    this.gameState.cycleInformation.harvestStatus = "harvested";
+    this.gameState.cycleInformation.finalYieldGrams = assessment.yieldGrams;
+    this.gameState.cycleInformation.finalYieldQuality = assessment.yieldQualityTier;
+
+    // Apply payment
+    this.gameState.economics.currentCashAud += assessment.finalPayment;
+    this.gameState.economics.totalRevenueAud += assessment.finalPayment;
+    this.gameState.economics.cumulativeProfitAud =
+      this.gameState.economics.currentCashAud - this.gameState.economics.startingBudgetAud;
+
+    return assessment;
+  }
+
+  /**
+   * Advance game by multiple days (Tomorrow, 3 Days, or Week)
+   * Locks controls during advancement
+   */
+  advanceDays(daysToAdvance: number, actions: GameDayActionRequest): GameStateResponse {
+    if (!this.gameState || !this.plantState || !this.tankState) {
+      throw new Error("Game not initialized");
+    }
+
+    // Advance days with provided settings locked in
+    for (let i = 0; i < daysToAdvance; i++) {
+      this.executeGameDay(actions);
+    }
+
+    return this.getGameState();
   }
 }

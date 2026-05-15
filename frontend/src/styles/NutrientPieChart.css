@@ -1,0 +1,61 @@
+.nutrient-pie-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+}
+
+.pie-svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.pie-segment {
+  transition: opacity 0.2s ease;
+}
+
+.pie-segment:hover {
+  opacity: 0.8;
+  filter: brightness(1.1);
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.legend-label {
+  color: var(--text-muted);
+  min-width: 12px;
+}
+
+.legend-value {
+  color: var(--primary);
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .nutrient-pie-chart {
+    padding: 12px;
+    gap: 10px;
+  }
+}

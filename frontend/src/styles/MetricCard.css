@@ -40,6 +40,30 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  position: relative;
+}
+
+.metric-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metric-info-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metric-info-btn:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 4px rgba(46, 204, 113, 0.5));
 }
 
 .metric-label-area {

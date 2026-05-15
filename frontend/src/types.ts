@@ -122,7 +122,9 @@ export interface PlantState {
     daysInFlower: number;
     floweringProgressPercent: number;
     budDensityScale1To10: number;
+    expectedHarvestDay?: number;
   };
+  yieldTracking?: YieldTracking;
   cannabinoids: {
     thcaAccumulationPercent: number;
     cbdaAccumulationPercent: number;
@@ -182,7 +184,7 @@ export interface StrainGenetics {
   seedType: 'feminized' | 'autoflower';
   seedCostAud: number;
   marketPricePerGram: number;
-  difficulty: 'beginner' | 'intermediate';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
   thcPercent: number;
   cbdPercent: number;
   floweringTimeDays: number;
@@ -242,4 +244,46 @@ export interface AdditiveProduct {
   bottleSizeMl: number;
   dosagePerTank20L: number;
   applicationFrequencyDays: number;
+}
+
+export interface YieldTracking {
+  currentEstimateGrams: number;
+  peakYieldDay: number | null;
+  peakYieldGrams: number;
+  harvestQualityScore: number;
+  qualityTier: 'S' | 'A' | 'B' | 'C';
+  daysSincePeak: number;
+  qualityLossPercent: number;
+}
+
+export interface TrichomeProfile {
+  clearPercent: number;
+  cloudyPercent: number;
+  amberPercent: number;
+}
+
+export interface HarvestAssessment {
+  yieldGrams: number;
+  yieldQualityTier: 'S' | 'A' | 'B' | 'C';
+  yieldQualityScore: number;
+  cannabinoidPercent: number;
+  trichomeProfile: TrichomeProfile;
+  deficiencyPenalties: number;
+  diseasePenalties: number;
+  qualityMultiplier: number;
+  harvestDaysPostPeak: number;
+  postPeakQualityLoss: number;
+  baseRevenue: number;
+  qualityAdjustedRevenue: number;
+  finalPayment: number;
+  advice: {
+    whatWentWell: string[];
+    whatToImprove: string[];
+    nextGrowSuggestions: string[];
+  };
+  optimalHarvestWould: {
+    yieldGrams: number;
+    qualityScore: number;
+    revenue: number;
+  };
 }

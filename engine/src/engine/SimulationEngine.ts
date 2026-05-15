@@ -81,6 +81,11 @@ export class SimulationEngine {
     // Step 15: Update yield modifiers (based on plant/tank state)
     this.updateYieldModifiers(plant, tank, strain, parUmol);
 
+    // Step 15.5: Update yield tracking during flowering
+    if (plant.flowering.floweringInitiated) {
+      this.updateYieldTracking(plant, tank, strain);
+    }
+
     // Step 16: Reset daily tracking
     this.resetDailyTracking(plant);
 
@@ -117,6 +122,15 @@ export class SimulationEngine {
     // Additional recovery if photosynthesis rate is high
     if (plant.lightResponse.photosynthesisRateRelative > 0.7) {
       healthChange += 0.1;
+    }
+
+    // Water temperature penalty: 2% health loss per 0.5°C above 23°C (root rot pathogen threshold)
+    const waterTemp = tank.waterChemistry.waterTemperatureCelsius;
+    if (waterTemp > 23) {
+      const tempDegreeAboveThreshold = waterTemp - 23;
+      const penaltyPerHalfDegree = 2.0; // 2% per 0.5°C
+      const tempPenalty = (tempDegreeAboveThreshold / 0.5) * penaltyPerHalfDegree;
+      healthChange -= Math.min(5.0, tempPenalty); // Cap at -5% per day to prevent instant death
     }
 
     // Penalty for stress conditions
@@ -207,9 +221,9 @@ export class SimulationEngine {
     const tempDiff = Math.abs(tank.roomEnvironment.airTemperatureCelsius - tempOptimal);
     const temperatureModifier = Math.max(0.3, 1 - tempDiff * 0.05);
 
-    // CO2 modifier (optimal 400-600 ppm)
+    // CO2 modifier (optimal 600+ ppm, minimum atmospheric baseline 400 ppm)
     const co2 = tank.roomEnvironment.co2Ppm;
-    const co2Modifier = co2 < 300 ? 0.5 : co2 > 1000 ? 0.8 : 1.0;
+    const co2Modifier = co2 < 400 ? 0.5 : co2 > 1000 ? 0.8 : 1.0;
 
     plant.lightResponse.photosynthesisRateRelative =
       lightCurve * chlorophyllModifier * temperatureModifier * co2Modifier;
@@ -697,6 +711,110 @@ export class SimulationEngine {
     // Decay additive presence
     if (plant.gameDay % 7 === 0) {
       // Fade additives weekly
+    }
+  }
+
+  private updateYieldTracking(
+    plant: PlantState,
+    tank: TankState,
+    strain: any
+  ): void {
+    const daysInFlower = plant.flowering.daysInFlower;
+    const floweringDays = strain.floweringTimeDays;
+
+    // Calculate current yield estimate
+    const healthFactor = Math.max(0.3, plant.physiology.plantHealthPercent / 100);
+    const nutrientFactor = plant.yieldModifiers.nutrientBalanceFactor;
+    const lightFactor = plant.yieldModifiers.lightEfficiencyFactor;
+    const stressFactor = plant.yieldModifiers.stressPenaltyFactor;
+
+    // Get yield progression percentage for current day
+    let progressionPercent = 0;
+    if (daysInFlower <= 7) {
+      progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent * 0.5;
+    } else if (daysInFlower <= 14) {
+      progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent * 0.7;
+    } else if (daysInFlower <= 21) {
+      progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent;
+    } else if (daysInFlower <= 28) {
+      progressionPercent = strain.yieldProfile.yieldProgressionWeek6Percent;
+    } else if (daysInFlower <= 35) {
+      progressionPercent = strain.yieldProfile.yieldProgressionWeek7Percent;
+    } else {
+      progressionPercent = strain.yieldProfile.yieldProgressionWeek8Percent;
+    }
+
+    let currentYield =
+      strain.yieldProfile.yieldGramsTypical *
+      (progressionPercent / 100) *
+      healthFactor *
+      nutrientFactor *
+      lightFactor *
+      stressFactor;
+
+    // Post-peak degradation: yield decreases after optimal harvest day
+    if (daysInFlower > floweringDays) {
+      const daysOverdue = daysInFlower - floweringDays;
+      const degradationRate = strain.yieldProfile.degradationPercentPerDay;
+      const qualityLoss = 1 - (degradationRate / 100) ** daysOverdue;
+      currentYield *= Math.max(0.5, qualityLoss);
+    }
+
+    // Update yield tracking
+    const previousYield = plant.yieldTracking.currentEstimateGrams;
+    plant.yieldTracking.currentEstimateGrams = Math.round(currentYield * 10) / 10;
+
+    // Detect peak yield (yield stopped increasing)
+    if (
+      plant.yieldTracking.peakYieldDay === null &&
+      previousYield > plant.yieldTracking.currentEstimateGrams
+    ) {
+      plant.yieldTracking.peakYieldDay = plant.flowering.daysInFlower - 1;
+      plant.yieldTracking.peakYieldGrams = previousYield;
+    }
+
+    // Update days since peak
+    if (plant.yieldTracking.peakYieldDay !== null) {
+      plant.yieldTracking.daysSincePeak = daysInFlower - plant.yieldTracking.peakYieldDay;
+    }
+
+    // Calculate quality loss due to post-peak degradation
+    if (plant.yieldTracking.daysSincePeak > 0) {
+      const degradationRate = strain.yieldProfile.degradationPercentPerDay;
+      plant.yieldTracking.qualityLossPercent = Math.min(
+        100,
+        (degradationRate / 100) ** plant.yieldTracking.daysSincePeak * 100
+      );
+    }
+
+    // Update trichome maturity for quality estimation
+    const clearPercent = plant.trichomeMaturity.clearTrichomesPercent;
+    const cloudyPercent = plant.trichomeMaturity.cloudyTrichomesPercent;
+    const amberPercent = plant.trichomeMaturity.amberTrichomesPercent;
+
+    const peakClear = strain.yieldProfile.trichomePeakClearPercent;
+    const peakCloudy = strain.yieldProfile.trichomePeakCloudyPercent;
+    const peakAmber = strain.yieldProfile.trichomePeakAmberPercent;
+
+    // Simple trichome quality score
+    const clearDiff = Math.abs(clearPercent - peakClear);
+    const cloudyDiff = Math.abs(cloudyPercent - peakCloudy);
+    const amberDiff = Math.abs(amberPercent - peakAmber);
+    const totalDiff = (clearDiff + cloudyDiff + amberDiff) / 3;
+    plant.yieldTracking.harvestQualityScore = Math.max(
+      0,
+      100 - totalDiff * 5 - plant.yieldTracking.qualityLossPercent
+    );
+
+    // Set quality tier
+    if (plant.yieldTracking.harvestQualityScore >= 90) {
+      plant.yieldTracking.qualityTier = "S";
+    } else if (plant.yieldTracking.harvestQualityScore >= 75) {
+      plant.yieldTracking.qualityTier = "A";
+    } else if (plant.yieldTracking.harvestQualityScore >= 60) {
+      plant.yieldTracking.qualityTier = "B";
+    } else {
+      plant.yieldTracking.qualityTier = "C";
     }
   }
 }

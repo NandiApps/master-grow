@@ -1,0 +1,168 @@
+.harvest-button-container {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+.yield-estimate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  min-width: 120px;
+}
+
+.yield-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.yield-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quality-tier {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quality-tier.tier-S {
+  background: #FFD700;
+  color: #000;
+}
+
+.quality-tier.tier-A {
+  background: #90EE90;
+  color: #000;
+}
+
+.quality-tier.tier-B {
+  background: #87CEEB;
+  color: #000;
+}
+
+.quality-tier.tier-C {
+  background: #FFB6C1;
+  color: #000;
+}
+
+.harvest-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.days-in-flower {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.status {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.status-gray {
+  background: rgba(128, 128, 128, 0.2);
+  color: #808080;
+}
+
+.status-blue {
+  background: rgba(0, 120, 215, 0.2);
+  color: #0078d7;
+}
+
+.status-orange {
+  background: rgba(243, 156, 18, 0.2);
+  color: #f39c12;
+}
+
+.status-green {
+  background: rgba(39, 174, 96, 0.2);
+  color: #27ae60;
+}
+
+.quality-loss-warning {
+  font-size: 12px;
+  color: #f39c12;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.harvest-btn {
+  padding: 12px 20px;
+  background: var(--primary);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 140px;
+}
+
+.harvest-btn.active {
+  background: #2ecc71;
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.harvest-btn.active:hover {
+  background: #27ae60;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(46, 204, 113, 0.4);
+}
+
+.harvest-btn.disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .harvest-button-container {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .yield-estimate {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .harvest-btn {
+    width: 100%;
+  }
+
+  .yield-value {
+    font-size: 28px;
+  }
+}

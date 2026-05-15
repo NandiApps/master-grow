@@ -12,7 +12,7 @@ import {
   GameDayActionRequest,
   HarvestRequest,
 } from "./types";
-import { listStrains } from "./data/strains";
+import { getAllStrains } from "./data/strains";
 import { listAdditives } from "./data/additives";
 
 type Env = {
@@ -94,7 +94,29 @@ app.get("/api/game/:gameId/state", async (c) => {
   }
 });
 
-// Harvest the plant
+// Harvest the plant - new endpoint using HarvestAssessmentEngine
+app.post("/api/game/:gameId/harvest-now", async (c) => {
+  try {
+    const { gameId } = c.req.param();
+
+    // Fetch from KV
+    const stored = await c.env.GAME_STATE.get(gameId);
+    if (!stored) {
+      return c.json({ error: "Game not found" }, 404);
+    }
+
+    const manager = GameManager.deserialize(stored);
+    const assessment = manager.harvest();
+
+    // Persist back to KV
+    await c.env.GAME_STATE.put(gameId, manager.serialize());
+    return c.json(assessment);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 400);
+  }
+});
+
+// Legacy harvest endpoint for backwards compatibility
 app.post("/api/game/:gameId/harvest", async (c) => {
   try {
     const { gameId } = c.req.param();
@@ -106,12 +128,61 @@ app.post("/api/game/:gameId/harvest", async (c) => {
     }
 
     const manager = GameManager.deserialize(stored);
-    const harvestData: HarvestRequest = await c.req.json();
-    const result = manager.harvest(harvestData);
+    const assessment = manager.harvest();
 
     // Persist back to KV
     await c.env.GAME_STATE.put(gameId, manager.serialize());
-    return c.json(result);
+    return c.json(assessment);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 400);
+  }
+});
+
+// Advance game by multiple days
+app.post("/api/game/:gameId/advance-days", async (c) => {
+  try {
+    const { gameId } = c.req.param();
+    const body: any = await c.req.json();
+    const { daysToAdvance, actions } = body;
+
+    // Fetch from KV
+    const stored = await c.env.GAME_STATE.get(gameId);
+    if (!stored) {
+      return c.json({ error: "Game not found" }, 404);
+    }
+
+    const manager = GameManager.deserialize(stored);
+    const response = manager.advanceDays(daysToAdvance, actions);
+
+    // Persist back to KV
+    await c.env.GAME_STATE.put(gameId, manager.serialize());
+    return c.json(response);
+  } catch (error: any) {
+    return c.json({ error: error.message }, 400);
+  }
+});
+
+// Start a new growth cycle with a new strain
+app.post("/api/game/:gameId/new-cycle", async (c) => {
+  try {
+    const { gameId } = c.req.param();
+    const body: any = await c.req.json();
+    const { selectedStrainId } = body;
+
+    // Fetch from KV
+    const stored = await c.env.GAME_STATE.get(gameId);
+    if (!stored) {
+      return c.json({ error: "Game not found" }, 404);
+    }
+
+    const manager = GameManager.deserialize(stored);
+    // TODO: Implement new cycle logic in GameManager
+    // For now, just return the current state
+    const response = manager.getState();
+
+    // Persist back to KV
+    await c.env.GAME_STATE.put(gameId, manager.serialize());
+    return c.json(response);
   } catch (error: any) {
     return c.json({ error: error.message }, 400);
   }
@@ -120,7 +191,7 @@ app.post("/api/game/:gameId/harvest", async (c) => {
 // List available strains
 app.get("/api/strains", (c) => {
   try {
-    const strains = listStrains();
+    const strains = getAllStrains();
     return c.json({ strains, count: strains.length });
   } catch (error: any) {
     return c.json({ error: error.message }, 400);
@@ -131,8 +202,8 @@ app.get("/api/strains", (c) => {
 app.get("/api/strains/:strainId", (c) => {
   try {
     const { strainId } = c.req.param();
-    const strains = listStrains();
-    const strain = strains.find((s) => s.id === strainId);
+    const strains = getAllStrains();
+    const strain = strains.find((s: any) => s.id === strainId);
 
     if (!strain) {
       return c.json({ error: "Strain not found" }, 404);

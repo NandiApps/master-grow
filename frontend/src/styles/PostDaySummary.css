@@ -1,0 +1,244 @@
+.post-day-summary {
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.summary-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.health-overview {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(46, 204, 113, 0.1));
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.health-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-delta {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stat-delta.delta-positive {
+  color: #27ae60;
+  background: rgba(39, 174, 96, 0.15);
+}
+
+.stat-delta.delta-negative {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.15);
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stat-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.stat-group.stat-positive {
+  border-color: #27ae60;
+  background: rgba(39, 174, 96, 0.05);
+}
+
+.stat-group.stat-neutral {
+  border-color: #3498db;
+  background: rgba(52, 152, 219, 0.05);
+}
+
+.stat-group.stat-negative {
+  border-color: #f39c12;
+  background: rgba(243, 156, 18, 0.05);
+}
+
+.group-icon {
+  font-size: 16px;
+}
+
+.group-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.group-count {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.summary-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.summary-item:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.summary-item.item-positive {
+  border-left: 4px solid #27ae60;
+}
+
+.summary-item.item-neutral {
+  border-left: 4px solid #3498db;
+}
+
+.summary-item.item-negative {
+  border-left: 4px solid #f39c12;
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.item-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.item-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.item-delta {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.item-delta.delta-positive {
+  color: #27ae60;
+  background: rgba(39, 174, 96, 0.15);
+}
+
+.item-delta.delta-neutral {
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.15);
+}
+
+.item-delta.delta-negative {
+  color: #f39c12;
+  background: rgba(243, 156, 18, 0.15);
+}
+
+.modal-close-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: black;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: #27ae60;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+@media (max-width: 768px) {
+  .post-day-summary {
+    max-width: 100%;
+  }
+
+  .summary-header h2 {
+    font-size: 16px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .summary-items {
+    max-height: 200px;
+  }
+}

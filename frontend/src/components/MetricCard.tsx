@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { MetricInfoModal } from './MetricInfoModal';
 import '../styles/MetricCard.css';
 
 interface MetricCardProps {
@@ -12,6 +14,7 @@ interface MetricCardProps {
   isWarning: boolean;
   icon?: string;
   sparklineData?: number[]; // For trend visualization
+  metricKey?: string; // For info modal lookup
 }
 
 export function MetricCard({
@@ -26,7 +29,9 @@ export function MetricCard({
   isWarning,
   icon,
   sparklineData,
+  metricKey,
 }: MetricCardProps) {
+  const [showInfo, setShowInfo] = useState(false);
   // Calculate percentage for threshold slider
   const range = max - min;
   const percentage = ((value - min) / range) * 100;
@@ -42,18 +47,30 @@ export function MetricCard({
   const status = getStatusColor();
 
   return (
-    <div className={`metric-card metric-${status}`}>
-      <div className="metric-header">
-        <div className="metric-label-area">
-          {icon && <span className="metric-icon">{icon}</span>}
-          <span className="metric-label">{label}</span>
+    <>
+      <div className={`metric-card metric-${status}`}>
+        <div className="metric-header">
+          <div className="metric-label-area">
+            {icon && <span className="metric-icon">{icon}</span>}
+            <span className="metric-label">{label}</span>
+          </div>
+          <div className="metric-header-right">
+            {metricKey && (
+              <button
+                className="metric-info-btn"
+                onClick={() => setShowInfo(true)}
+                title="Learn more about this metric"
+              >
+                💡
+              </button>
+            )}
+            <span className={`metric-status-badge status-${status}`}>
+              {isCritical && '🔴'}
+              {isWarning && '🟡'}
+              {!isCritical && !isWarning && '✅'}
+            </span>
+          </div>
         </div>
-        <span className={`metric-status-badge status-${status}`}>
-          {isCritical && '🔴'}
-          {isWarning && '🟡'}
-          {!isCritical && !isWarning && '✅'}
-        </span>
-      </div>
 
       <div className="metric-value-area">
         <span className={`metric-value value-${status}`}>
@@ -106,6 +123,17 @@ export function MetricCard({
           </span>
         </div>
       )}
-    </div>
+      </div>
+
+      {showInfo && metricKey && (
+        <MetricInfoModal
+          metricKey={metricKey}
+          currentValue={value}
+          min={min}
+          max={max}
+          onClose={() => setShowInfo(false)}
+        />
+      )}
+    </>
   );
 }

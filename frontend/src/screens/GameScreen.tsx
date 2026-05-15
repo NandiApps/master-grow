@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import { GameClient } from '../client/GameClient';
-import { GameStateResponse, GameDayActionRequest } from '../types';
-import { MonitorPanel } from '../components/MonitorPanel';
+import { GameStateResponse, GameDayActionRequest, HarvestAssessment, StrainGenetics } from '../types';
+import { DashboardPanel } from '../components/DashboardPanel';
 import { ControlPanel } from '../components/ControlPanel';
+import { PlantVisual } from '../components/PlantVisual';
 import { PlantStatusCard } from '../components/PlantStatusCard';
 import { TrichomeInspector } from '../components/TrichomeInspector';
 import { SessionModal } from '../components/SessionModal';
 import { HarvestScreen } from '../components/HarvestScreen';
+import { DaySummaryFooter } from '../components/DaySummaryFooter';
+import { HarvestButton } from '../components/HarvestButton';
+import { HarvestAssessmentModal } from '../components/HarvestAssessmentModal';
+import { PaymentScreen } from '../components/PaymentScreen';
+import { SeedShop } from '../components/SeedShop';
 import '../styles/GameScreen.css';
 
 interface Props {
@@ -23,6 +29,16 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
   const [showTrichomeModal, setShowTrichomeModal] = useState(false);
   const [harvestResult, setHarvestResult] = useState<any | null>(null);
 
+  // Harvest flow state
+  const [harvestFlowStage, setHarvestFlowStage] = useState<'none' | 'assessment' | 'payment' | 'seed-shop'>('none');
+  const [harvestAssessment, setHarvestAssessment] = useState<HarvestAssessment | null>(null);
+
+  // Multi-day advancement state
+  const [isAdvancingDays, setIsAdvancingDays] = useState(false);
+
+  // Strains state
+  const [availableStrains, setAvailableStrains] = useState<StrainGenetics[]>([]);
+
   // Control states
   const [parUmol, setParUmol] = useState(600);
   const [lightHours, setLightHours] = useState(18);
@@ -35,6 +51,11 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
       try {
         const data = await gameClient.getState();
         setState(data);
+
+        // Load available strains
+        const strains = await gameClient.getStrains();
+        setAvailableStrains(strains);
+
         setLoading(false);
       } catch (err) {
         setError('Failed to load game state');
@@ -67,6 +88,55 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
       setSelectedAdditives([]); // Clear additives after application
     } catch (err) {
       setError('Failed to execute day');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdvanceDays = async (days: number) => {
+    if (!state) return;
+
+    try {
+      setIsAdvancingDays(true);
+      const actions: GameDayActionRequest = {
+        parUmol,
+        lightScheduleHoursOn: lightHours,
+        lightScheduleHoursOff: 24 - lightHours,
+        waterTemperatureTarget: temperature,
+        humidityTarget: humidity,
+        additiveApplications: selectedAdditives.map(app => ({
+          additiveId: app.id,
+          doseMl: app.doseMl,
+        })),
+      };
+
+      // Call advanceDays on the game client
+      const newState = await gameClient.advanceDays(days, actions);
+      setState(newState);
+      setSelectedAdditives([]); // Clear additives after application
+    } catch (err) {
+      setError(`Failed to advance ${days} days`);
+      console.error(err);
+    } finally {
+      setIsAdvancingDays(false);
+    }
+  };
+
+  const handleDirectHarvest = async () => {
+    if (!state) return;
+
+    try {
+      setLoading(true);
+      // Call the new harvest endpoint on GameClient
+      const assessment = await gameClient.harvestNow();
+      setHarvestAssessment(assessment);
+      setHarvestFlowStage('assessment');
+      // Update state with the harvest result
+      const newState = await gameClient.getState();
+      setState(newState);
+    } catch (err) {
+      setError('Failed to harvest');
       console.error(err);
     } finally {
       setLoading(false);
@@ -106,6 +176,35 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
     // For now, just clear the harvest result
   };
 
+  const handleAssessmentContinue = () => {
+    setHarvestFlowStage('payment');
+  };
+
+  const handlePaymentContinue = () => {
+    setHarvestFlowStage('seed-shop');
+  };
+
+  const handleSelectNewStrain = async (strainId: string) => {
+    if (!state) return;
+
+    try {
+      setLoading(true);
+      // Start a new game cycle with the selected strain
+      await gameClient.startNewCycle(strainId);
+      const newState = await gameClient.getState();
+      setState(newState);
+
+      // Reset harvest flow
+      setHarvestFlowStage('none');
+      setHarvestAssessment(null);
+    } catch (err) {
+      setError('Failed to start new cycle');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading && !state) {
     return <div className="game-screen"><p>Loading game...</p></div>;
   }
@@ -139,32 +238,66 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         </div>
       </div>
 
-      <PlantStatusCard state={state} />
+      <div className="game-body">
+        <div className="left-panel">
+          <PlantVisual plant={state.plant} />
 
-      <MonitorPanel state={state} />
+          <PlantStatusCard state={state} />
 
-      <ControlPanel
-        parUmol={parUmol}
-        onParChange={setParUmol}
-        lightHours={lightHours}
-        onLightChange={setLightHours}
-        humidity={humidity}
-        onHumidityChange={setHumidity}
-        temperature={temperature}
-        onTemperatureChange={setTemperature}
-        selectedAdditives={selectedAdditives}
-        onAdditivesChange={setSelectedAdditives}
-        gameClient={gameClient}
-      />
+          <ControlPanel
+            parUmol={parUmol}
+            onParChange={setParUmol}
+            lightHours={lightHours}
+            onLightChange={setLightHours}
+            humidity={humidity}
+            onHumidityChange={setHumidity}
+            temperature={temperature}
+            onTemperatureChange={setTemperature}
+            selectedAdditives={selectedAdditives}
+            onAdditivesChange={setSelectedAdditives}
+            gameClient={gameClient}
+          />
+        </div>
+
+        <div className="right-panel">
+          <DashboardPanel state={state} />
+        </div>
+      </div>
 
       <div className="action-panel">
-        <button
-          className="primary-btn"
-          onClick={handleExecuteDay}
-          disabled={loading}
-        >
-          {loading ? 'Processing...' : 'Execute Day'}
-        </button>
+        <div className="day-control-buttons">
+          <button
+            className="primary-btn"
+            onClick={handleExecuteDay}
+            disabled={loading || isAdvancingDays}
+          >
+            {loading ? 'Processing...' : '→ Tomorrow'}
+          </button>
+
+          <button
+            className="secondary-btn"
+            onClick={() => handleAdvanceDays(3)}
+            disabled={isAdvancingDays || loading}
+          >
+            {isAdvancingDays ? 'Advancing...' : '→ 3 Days'}
+          </button>
+
+          <button
+            className="secondary-btn"
+            onClick={() => handleAdvanceDays(7)}
+            disabled={isAdvancingDays || loading}
+          >
+            {isAdvancingDays ? 'Advancing...' : '→ Week'}
+          </button>
+        </div>
+
+        {isFlowering && (
+          <HarvestButton
+            gameState={state}
+            onHarvest={handleDirectHarvest}
+            disabled={loading}
+          />
+        )}
 
         {isFlowering && (
           <button
@@ -174,16 +307,27 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
             🔬 Inspect Trichomes
           </button>
         )}
-
-        {isHarvestReady && (
-          <button
-            className="harvest-btn"
-            onClick={() => setShowTrichomeModal(true)}
-          >
-            🌾 Harvest Ready
-          </button>
-        )}
       </div>
+
+      {state && (
+        <DaySummaryFooter
+          healthDelta={state.plant.physiology.plantHealthChangeTodayPercent}
+          nutrientsOk={
+            state.tank.macroNutrients.nitrogenNMgPerLiter > 0 &&
+            state.tank.macroNutrients.phosphorusPMgPerLiter > 0 &&
+            state.tank.macroNutrients.potassiumKMgPerLiter > 0
+          }
+          humidityOk={
+            state.tank.roomEnvironment.relativeHumidityPercent >= 40 &&
+            state.tank.roomEnvironment.relativeHumidityPercent <= 70
+          }
+          temperatureOk={
+            state.tank.roomEnvironment.airTemperatureCelsius >= 18 &&
+            state.tank.roomEnvironment.airTemperatureCelsius <= 28
+          }
+          lightingOk={state.tank.roomEnvironment.lightParUmolPerM2PerS > 200}
+        />
+      )}
 
       {showSessionModal && (
         <SessionModal
@@ -207,6 +351,45 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
           result={harvestResult}
           onNextCycle={handleNextCycle}
           onQuit={handleHarvestQuit}
+        />
+      )}
+
+      {harvestFlowStage === 'assessment' && harvestAssessment && state && (
+        <HarvestAssessmentModal
+          assessment={harvestAssessment}
+          strainName={state.gameState.cycleInformation.selectedStrainName}
+          onClose={handleAssessmentContinue}
+        />
+      )}
+
+      {harvestFlowStage === 'payment' && harvestAssessment && state && (
+        <PaymentScreen
+          assessment={harvestAssessment}
+          strainName={state.gameState.cycleInformation.selectedStrainName}
+          currentCash={state.gameState.economics.currentCashAud}
+          onContinue={handlePaymentContinue}
+        />
+      )}
+
+      {harvestFlowStage === 'seed-shop' && state && (
+        <SeedShop
+          strains={availableStrains.map(strain => ({
+            id: strain.id,
+            name: strain.name,
+            thcPercent: strain.thcPercent,
+            cbdPercent: strain.cbdPercent,
+            yieldGramsTypical: strain.baseYieldGrams,
+            floweringTimeDays: strain.floweringTimeDays,
+            seedCostAud: strain.seedCostAud,
+            difficulty: (strain.difficulty === 'beginner' ? 'easy' :
+                        strain.difficulty === 'intermediate' ? 'medium' : 'hard') as 'easy' | 'medium' | 'hard',
+          }))}
+          currentCash={state.gameState.economics.currentCashAud}
+          onSelectStrain={handleSelectNewStrain}
+          onClose={() => {
+            setHarvestFlowStage('none');
+            setHarvestAssessment(null);
+          }}
         />
       )}
     </div>

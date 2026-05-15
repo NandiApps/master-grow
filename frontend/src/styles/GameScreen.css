@@ -73,6 +73,29 @@
   gap: 0;
 }
 
+.game-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
 .error-panel {
   background: rgba(231, 76, 60, 0.1);
   border: 1px solid var(--danger);
@@ -84,21 +107,37 @@
 
 .action-panel {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 16px;
   background: var(--card);
   border-top: 1px solid var(--border);
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.day-control-buttons {
+  display: flex;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.primary-btn {
+.day-control-buttons .primary-btn,
+.day-control-buttons .secondary-btn {
   flex: 1;
-  min-width: 150px;
+  min-width: 100px;
+}
+
+.primary-btn {
   background: var(--primary);
   color: black;
   font-weight: 700;
   padding: 12px;
   font-size: 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .primary-btn:hover:not(:disabled) {
@@ -107,18 +146,30 @@
   box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
 }
 
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .secondary-btn {
-  flex: 1;
-  min-width: 150px;
   background: var(--secondary);
   color: white;
   font-weight: 600;
   padding: 12px;
   font-size: 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .secondary-btn:hover:not(:disabled) {
   background: #2980b9;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .harvest-btn {
@@ -137,6 +188,14 @@
   box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
 }
 
+@media (max-width: 1024px) {
+  .game-body {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+}
+
 @media (max-width: 768px) {
   .game-header {
     padding: 12px;
@@ -144,6 +203,11 @@
 
   .game-header h2 {
     font-size: 18px;
+  }
+
+  .game-body {
+    gap: 10px;
+    padding: 10px;
   }
 
   .action-panel {

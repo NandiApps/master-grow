@@ -1,0 +1,208 @@
+.seed-shop {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.shop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.shop-header h2 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--text);
+}
+
+.shop-intro {
+  padding: 12px;
+  background: rgba(0, 120, 215, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 120, 215, 0.3);
+  margin-bottom: 16px;
+}
+
+.shop-intro p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.shop-intro strong {
+  color: #2ecc71;
+  font-weight: 700;
+}
+
+/* Strain Grid */
+.strain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.strain-card {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.strain-card:not(.disabled):hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);
+}
+
+.strain-card.selected {
+  border-color: var(--primary);
+  background: rgba(46, 204, 113, 0.1);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);
+}
+
+.strain-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 20px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.strain-card.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.strain-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Strain Stats */
+.strain-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 13px;
+}
+
+/* Strain Meta */
+.strain-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.difficulty {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cost {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.cost.unaffordable {
+  color: #e74c3c;
+}
+
+.insufficient-funds {
+  font-size: 11px;
+  color: #e74c3c;
+  font-weight: 600;
+  text-align: center;
+  padding-top: 4px;
+}
+
+/* Purchase Button */
+.purchase-button {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.purchase-button:hover:not(.disabled) {
+  background: #27ae60;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.purchase-button.disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .seed-shop {
+    max-width: 90vw;
+    max-height: 85vh;
+  }
+
+  .strain-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .strain-card {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .strain-name {
+    font-size: 13px;
+  }
+
+  .shop-header h2 {
+    font-size: 18px;
+  }
+}

@@ -5,6 +5,36 @@
 
 // ==================== STRAIN DATA ====================
 
+export interface StrainVisualAppearance {
+  leafColor: { light: string; dark: string }; // e.g., "light green", "deep purple"
+  budDensity1To100: number; // 1=airy, 100=extremely dense
+  budColor: { base: string; highlight: string };
+  pistilColor: string;
+  trichomeDescription: string;
+  uniqueTraits: string;
+  satindaPercent: number;
+  indicaPercent: number;
+}
+
+export interface StrainYieldProfile {
+  yieldGramsMin: number;
+  yieldGramsMax: number;
+  yieldGramsTypical: number;
+  yieldProgressionWeek5Percent: number; // % of final yield at week 5 of flower
+  yieldProgressionWeek6Percent: number;
+  yieldProgressionWeek7Percent: number;
+  yieldProgressionWeek8Percent: number;
+  thcRangeMin: number;
+  thcRangeMax: number;
+  cbdPercent: number;
+  // Trichome maturity targets for quality scoring
+  trichomePeakClearPercent: number;
+  trichomePeakCloudyPercent: number;
+  trichomePeakAmberPercent: number;
+  degradationPercentPerDay: number; // Quality loss post-peak (e.g., 2.5 for -2.5%/day)
+  priceAudPerGram: number;
+}
+
 export interface StrainGenetics {
   id: string;
   name: string;
@@ -30,6 +60,9 @@ export interface StrainGenetics {
   effectProfile: string;
   responsivityToChitosan: number;
   parToleranceMax: number;
+  // New fields for harvest & yield system
+  visualAppearance: StrainVisualAppearance;
+  yieldProfile: StrainYieldProfile;
   // Nutrient thresholds (strain-specific optimal ranges)
   nutrientThresholds: {
     // Vegetative stage ranges
@@ -190,6 +223,16 @@ export interface NutrientUptakeToday {
   siMg: number;
 }
 
+export interface YieldTracking {
+  currentEstimateGrams: number; // Real-time yield estimate
+  peakYieldDay: number | null; // Day when yield stopped increasing
+  peakYieldGrams: number; // Maximum yield achieved
+  harvestQualityScore: number; // 0-100 quality rating
+  qualityTier: "S" | "A" | "B" | "C"; // Letter grade
+  daysSincePeak: number; // Days after optimal harvest
+  qualityLossPercent: number; // Degradation % since peak
+}
+
 export interface PlantState {
   plantId: string;
   gameDay: number;
@@ -210,6 +253,7 @@ export interface PlantState {
   nutrientUptakeToday: NutrientUptakeToday;
 
   cumulativeYieldEstimateGrams: number;
+  yieldTracking: YieldTracking; // New: detailed yield & quality tracking
   yieldModifiers: {
     geneticBase: number;
     healthFactor: number;
@@ -468,6 +512,38 @@ export interface HarvestRequest {
   cloudyTrichomesPercent: number;
   amberTrichomesPercent: number;
   harvestChoice: "energetic" | "balanced" | "sedating";
+}
+
+// ==================== HARVEST ASSESSMENT ====================
+
+export interface HarvestAssessment {
+  yieldGrams: number;
+  yieldQualityTier: "S" | "A" | "B" | "C";
+  yieldQualityScore: number; // 0-100
+  cannabinoidPercent: number;
+  trichomeProfile: {
+    clearPercent: number;
+    cloudyPercent: number;
+    amberPercent: number;
+  };
+  deficiencyPenalties: number; // AUD deduction
+  diseasePenalties: number; // AUD deduction
+  qualityMultiplier: number; // 0.4 to 1.3
+  harvestDaysPostPeak: number;
+  postPeakQualityLoss: number; // Percentage
+  baseRevenue: number; // Base price × yield
+  qualityAdjustedRevenue: number; // After multiplier
+  finalPayment: number; // After penalties
+  advice: {
+    whatWentWell: string[];
+    whatToImprove: string[];
+    nextGrowSuggestions: string[];
+  };
+  optimalHarvestWould: {
+    yieldGrams: number;
+    qualityScore: number;
+    revenue: number;
+  };
 }
 
 export interface GameStateResponse {

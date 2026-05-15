@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { GameClient } from '../client/GameClient';
-import { AdditiveProduct } from '../types';
 import '../styles/ControlPanel.css';
 
-interface Props {
+interface ControlPanelProps {
   parUmol: number;
   onParChange: (value: number) => void;
   lightHours: number;
@@ -14,305 +13,85 @@ interface Props {
   onTemperatureChange: (value: number) => void;
   selectedAdditives: Array<{ id: string; doseMl: number }>;
   onAdditivesChange: (additives: Array<{ id: string; doseMl: number }>) => void;
-  onNutrientTopUp?: (topUp: { baseNutrientMl: number; phUpMl?: number; phDownMl?: number }) => void;
   gameClient: GameClient;
 }
 
-export function ControlPanel({
-  parUmol,
-  onParChange,
-  lightHours,
-  onLightChange,
-  humidity,
-  onHumidityChange,
-  temperature,
-  onTemperatureChange,
-  selectedAdditives,
-  onAdditivesChange,
-  onNutrientTopUp,
-  gameClient,
-}: Props) {
-  const [additives, setAdditives] = useState<AdditiveProduct[]>([]);
-  const [expandedSection, setExpandedSection] = useState<string | null>('light');
+interface Additive {
+  id: string;
+  name: string;
+  bottleSizeMl: number;
+  dosagePerTank20L: number;
+}
+
+export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, humidity, onHumidityChange, temperature, onTemperatureChange, selectedAdditives, onAdditivesChange, gameClient }: ControlPanelProps) {
+  const [additives, setAdditives] = useState<Additive[]>([]);
   const [loading, setLoading] = useState(true);
-  const [baseNutrientMl, setBaseNutrientMl] = useState(0);
-  const [phUpMl, setPhUpMl] = useState(0);
-  const [phDownMl, setPhDownMl] = useState(0);
 
   useEffect(() => {
     const loadAdditives = async () => {
       try {
         const data = await gameClient.getAdditives();
         setAdditives(data);
-      } catch (err) {
-        console.error('Failed to load additives:', err);
+      } catch (error) {
+        console.error('Failed to load additives:', error);
       } finally {
         setLoading(false);
       }
     };
-
     loadAdditives();
   }, [gameClient]);
 
   const toggleAdditive = (additiveId: string) => {
-    const existing = selectedAdditives.find(a => a.id === additiveId);
-    if (existing) {
-      onAdditivesChange(selectedAdditives.filter(a => a.id !== additiveId));
+    const additive = additives.find(a => a.id === additiveId);
+    if (!additive) return;
+    const existingIndex = selectedAdditives.findIndex(a => a.id === additiveId);
+    if (existingIndex >= 0) {
+      onAdditivesChange(selectedAdditives.filter((_, i) => i !== existingIndex));
     } else {
-      const additive = additives.find(a => a.id === additiveId);
-      if (additive) {
-        onAdditivesChange([
-          ...selectedAdditives,
-          { id: additiveId, doseMl: additive.dosagePerTank20L },
-        ]);
-      }
+      onAdditivesChange([...selectedAdditives, { id: additiveId, doseMl: additive.dosagePerTank20L }]);
     }
   };
 
   const updateAdditiveDose = (additiveId: string, doseMl: number) => {
-    onAdditivesChange(
-      selectedAdditives.map(a =>
-        a.id === additiveId ? { ...a, doseMl } : a
-      )
-    );
+    onAdditivesChange(selectedAdditives.map(a => a.id === additiveId ? { ...a, doseMl } : a));
   };
 
-  const getAdditiveCost = (additiveId: string, doseMl: number): number => {
-    const additive = additives.find(a => a.id === additiveId);
-    if (!additive) return 0;
-    return doseMl * additive.costAud / additive.bottleSizeMl;
-  };
-
-  const totalAdditiveCost = selectedAdditives.reduce(
-    (sum, app) => sum + getAdditiveCost(app.id, app.doseMl),
-    0
-  );
+  const isAdditiveSelected = (additiveId: string) => selectedAdditives.some(a => a.id === additiveId);
 
   return (
     <div className="control-panel">
-      {/* Light Controls */}
+      <h3 className="control-title">🎮 Daily Controls</h3>
       <div className="control-section">
-        <button
-          className="section-header"
-          onClick={() => setExpandedSection(expandedSection === 'light' ? null : 'light')}
-        >
-          <span className="section-title">💡 Light Schedule & PAR</span>
-          <span className="expand-icon">{expandedSection === 'light' ? '▼' : '▶'}</span>
-        </button>
-
-        {expandedSection === 'light' && (
-          <div className="section-content">
-            <div className="control-item">
-              <label>Light Hours: {lightHours}h</label>
-              <input
-                type="range"
-                min="6"
-                max="24"
-                value={lightHours}
-                onChange={(e) => onLightChange(parseInt(e.target.value))}
-                className="slider"
-              />
-              <div className="control-hint">
-                {lightHours > 14 ? '🌱 Vegetative' : lightHours <= 12 ? '🌸 Flowering' : '⚖️ Transition'}
-              </div>
-            </div>
-
-            <div className="control-item">
-              <label>PAR: {parUmol} µmol/m²/s</label>
-              <input
-                type="range"
-                min="300"
-                max="1200"
-                value={parUmol}
-                onChange={(e) => onParChange(parseInt(e.target.value))}
-                className="slider"
-              />
-              <div className="control-hint">
-                {parUmol < 600 ? '⚠️ Low' : parUmol < 1000 ? '✓ Optimal' : '⚡ High stress'}
-              </div>
-            </div>
-          </div>
-        )}
+        <label className="control-label"><span className="label-text">☀️ Light Intensity (PAR)</span><span className="value-display">{parUmol} µmol/m²/s</span></label>
+        <input type="range" min="200" max="1500" step="50" value={parUmol} onChange={e => onParChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>200</small><small>800</small><small>1500</small></div>
       </div>
-
-      {/* Environment Controls */}
       <div className="control-section">
-        <button
-          className="section-header"
-          onClick={() => setExpandedSection(expandedSection === 'env' ? null : 'env')}
-        >
-          <span className="section-title">🌡️ Environment</span>
-          <span className="expand-icon">{expandedSection === 'env' ? '▼' : '▶'}</span>
-        </button>
-
-        {expandedSection === 'env' && (
-          <div className="section-content">
-            <div className="control-item">
-              <label>Temperature: {temperature}°C</label>
-              <input
-                type="range"
-                min="15"
-                max="30"
-                value={temperature}
-                onChange={(e) => onTemperatureChange(parseInt(e.target.value))}
-                className="slider"
-              />
-              <div className="control-hint">Optimal: 20-24°C</div>
-            </div>
-
-            <div className="control-item">
-              <label>Humidity: {humidity}%</label>
-              <input
-                type="range"
-                min="30"
-                max="80"
-                value={humidity}
-                onChange={(e) => onHumidityChange(parseInt(e.target.value))}
-                className="slider"
-              />
-              <div className="control-hint">
-                {humidity > 70 ? '⚠️ Mold risk' : humidity < 40 ? '⚠️ Stress' : '✓ Good'}
-              </div>
-            </div>
-          </div>
-        )}
+        <label className="control-label"><span className="label-text">🕐 Light Schedule</span><span className="value-display">{lightHours}h ON / {24 - lightHours}h OFF</span></label>
+        <input type="range" min="8" max="24" step="1" value={lightHours} onChange={e => onLightChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>8h</small><small>12h</small><small>24h</small></div>
       </div>
-
-      {/* Additives */}
       <div className="control-section">
-        <button
-          className="section-header"
-          onClick={() => setExpandedSection(expandedSection === 'additives' ? null : 'additives')}
-        >
-          <span className="section-title">
-            💊 Additives {selectedAdditives.length > 0 && `(${selectedAdditives.length})`}
-          </span>
-          <span className="expand-icon">{expandedSection === 'additives' ? '▼' : '▶'}</span>
-        </button>
-
-        {expandedSection === 'additives' && (
-          <div className="section-content">
-            {loading ? (
-              <p className="loading-text">Loading additives...</p>
-            ) : (
-              <>
-                <div className="additives-list">
-                  {additives.map((additive) => {
-                    const isSelected = selectedAdditives.some(a => a.id === additive.id);
-                    const selectedApp = selectedAdditives.find(a => a.id === additive.id);
-                    const cost = selectedApp ? getAdditiveCost(additive.id, selectedApp.doseMl) : 0;
-
-                    return (
-                      <div key={additive.id} className="additive-item">
-                        <div className="additive-header">
-                          <label className="additive-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleAdditive(additive.id)}
-                            />
-                            <span className="additive-name">{additive.name}</span>
-                          </label>
-                          <span className="additive-type">{additive.type}</span>
-                        </div>
-
-                        {isSelected && selectedApp && (
-                          <div className="additive-controls">
-                            <input
-                              type="range"
-                              min="0"
-                              max={additive.dosagePerTank20L * 2}
-                              step="0.5"
-                              value={selectedApp.doseMl}
-                              onChange={(e) => updateAdditiveDose(additive.id, parseFloat(e.target.value))}
-                              className="additive-slider"
-                            />
-                            <div className="additive-dose">
-                              {selectedApp.doseMl.toFixed(1)}mL / ${cost.toFixed(2)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {selectedAdditives.length > 0 && (
-                  <div className="additive-total">
-                    Total Cost: ${totalAdditiveCost.toFixed(2)}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+        <label className="control-label"><span className="label-text">🌡️ Air Temperature</span><span className="value-display">{temperature}°C</span></label>
+        <input type="range" min="15" max="30" step="0.5" value={temperature} onChange={e => onTemperatureChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>15°C</small><small>22°C</small><small>30°C</small></div>
       </div>
-
-      {/* Nutrient Dosing */}
       <div className="control-section">
-        <button
-          className="section-header"
-          onClick={() => setExpandedSection(expandedSection === 'nutrients' ? null : 'nutrients')}
-        >
-          <span className="section-title">💧 Feed Tank</span>
-          <span className="expand-icon">{expandedSection === 'nutrients' ? '▼' : '▶'}</span>
-        </button>
-
-        {expandedSection === 'nutrients' && (
-          <div className="section-content">
-            <div className="control-item">
-              <label>Base Nutrient: {baseNutrientMl}mL (~${(baseNutrientMl * 0.05).toFixed(2)})</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={baseNutrientMl}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setBaseNutrientMl(val);
-                  if (onNutrientTopUp) onNutrientTopUp({ baseNutrientMl: val, phUpMl, phDownMl });
-                }}
-                className="slider"
-              />
-              <div className="control-hint">Balanced NPK concentrate for 20L tank</div>
-            </div>
-
-            <div className="control-item">
-              <label>pH Up: {phUpMl}mL</label>
-              <input
-                type="range"
-                min="0"
-                max="50"
-                step="1"
-                value={phUpMl}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setPhUpMl(val);
-                  if (onNutrientTopUp) onNutrientTopUp({ baseNutrientMl, phUpMl: val, phDownMl });
-                }}
-                className="slider"
-              />
-            </div>
-
-            <div className="control-item">
-              <label>pH Down: {phDownMl}mL</label>
-              <input
-                type="range"
-                min="0"
-                max="50"
-                step="1"
-                value={phDownMl}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setPhDownMl(val);
-                  if (onNutrientTopUp) onNutrientTopUp({ baseNutrientMl, phUpMl, phDownMl: val });
-                }}
-                className="slider"
-              />
-            </div>
-          </div>
-        )}
+        <label className="control-label"><span className="label-text">💨 Humidity</span><span className="value-display">{humidity}%</span></label>
+        <input type="range" min="30" max="80" step="1" value={humidity} onChange={e => onHumidityChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>30%</small><small>60%</small><small>80%</small></div>
+      </div>
+      <div className="control-section additives-section">
+        <label className="control-label"><span className="label-text">💊 Additives</span></label>
+        {loading ? <p className="loading-text">Loading products...</p> : additives.length > 0 ? <div className="additives-grid">{additives.map(additive => {
+          const isSelected = isAdditiveSelected(additive.id);
+          const selectedAdditive = selectedAdditives.find(a => a.id === additive.id);
+          return <div key={additive.id} className={`additive-card ${isSelected ? 'selected' : ''}`}><button className="additive-toggle" onClick={() => toggleAdditive(additive.id)} title={additive.name}>{isSelected ? '✓' : '+'}</button><div className="additive-info"><span className="additive-name">{additive.name}</span>{isSelected && selectedAdditive && <div className="additive-dose"><label>Dose (mL):</label><input type="number" min="0" max={additive.bottleSizeMl} step="1" value={selectedAdditive.doseMl} onChange={e => updateAdditiveDose(additive.id, Number(e.target.value))} className="dose-input" onClick={e => e.stopPropagation()} /></div>}</div></div>;
+        })}</div> : <p className="no-additives">No additives available</p>}
+      </div>
+      <div className="control-summary">
+        <div className="summary-row"><span>Selected Additives:</span><span className="summary-value">{selectedAdditives.length}</span></div>
+        <div className="summary-row"><span>Total Dose:</span><span className="summary-value">{selectedAdditives.reduce((sum, a) => sum + a.doseMl, 0)} mL</span></div>
       </div>
     </div>
   );
