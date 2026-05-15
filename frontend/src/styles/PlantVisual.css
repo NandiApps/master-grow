@@ -1,0 +1,142 @@
+.plant-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(45, 80, 22, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.plant-container {
+  width: 140px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  animation: plant-glow 4s ease-in-out infinite;
+}
+
+@keyframes plant-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(76, 175, 80, 0.2);
+  }
+}
+
+.plant-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.plant-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stage-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(45, 80, 22, 0.15);
+  border-radius: 6px;
+}
+
+.stage-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.stage-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stage-name {
+  font-weight: 600;
+  color: #2d5016;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.height-info {
+  font-size: 0.8rem;
+  color: #558b2f;
+  font-weight: 500;
+}
+
+.stage-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(45, 80, 22, 0.08);
+  border-radius: 6px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(45, 80, 22, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #66bb6a 0%, #4caf50 100%);
+  transition: width 0.3s ease-out;
+  border-radius: 3px;
+}
+
+.progress-text {
+  min-width: 2.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2d5016;
+  text-align: right;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .plant-visual {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .plant-container {
+    width: 120px;
+    height: 170px;
+    padding: 0.75rem;
+  }
+
+  .stage-label {
+    padding: 0.5rem 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .stage-icon {
+    font-size: 1.25rem;
+  }
+
+  .stage-name {
+    font-size: 0.8rem;
+  }
+
+  .height-info {
+    font-size: 0.75rem;
+  }
+}

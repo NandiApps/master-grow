@@ -5,6 +5,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import type { KVNamespace } from "@cloudflare/workers-types";
 import { GameManager } from "./engine/GameManager";
 import {
   StartGameRequest,
@@ -14,13 +15,14 @@ import {
 import { listStrains } from "./data/strains";
 import { listAdditives } from "./data/additives";
 
-const app = new Hono();
+type Env = {
+  GAME_STATE: KVNamespace;
+};
+
+const app = new Hono<{ Bindings: Env }>();
 
 // CORS middleware - allow requests from Pages
 app.use("*", cors());
-
-// Game manager instances (in production, use sessions/database)
-const gameManagers = new Map<string, GameManager>();
 
 // ==================== ENDPOINTS ====================
 
@@ -36,7 +38,11 @@ app.post("/api/game/start", async (c) => {
     const manager = new GameManager();
     const response = manager.startGame(request);
 
-    gameManagers.set(response.gameState.gameId, manager);
+    // Persist to KV
+    await c.env.GAME_STATE.put(
+      response.gameState.gameId,
+      manager.serialize()
+    );
     return c.json(response);
   } catch (error: any) {
     return c.json({ error: error.message }, 400);
@@ -47,14 +53,19 @@ app.post("/api/game/start", async (c) => {
 app.post("/api/game/:gameId/day", async (c) => {
   try {
     const { gameId } = c.req.param();
-    const manager = gameManagers.get(gameId);
 
-    if (!manager) {
+    // Fetch from KV
+    const stored = await c.env.GAME_STATE.get(gameId);
+    if (!stored) {
       return c.json({ error: "Game not found" }, 404);
     }
 
+    const manager = GameManager.deserialize(stored);
     const actions: GameDayActionRequest = await c.req.json();
     const response = manager.executeGameDay(actions);
+
+    // Persist back to KV
+    await c.env.GAME_STATE.put(gameId, manager.serialize());
     return c.json(response);
   } catch (error: any) {
     return c.json({ error: error.message }, 400);
@@ -62,15 +73,17 @@ app.post("/api/game/:gameId/day", async (c) => {
 });
 
 // Get current game state
-app.get("/api/game/:gameId/state", (c) => {
+app.get("/api/game/:gameId/state", async (c) => {
   try {
     const { gameId } = c.req.param();
-    const manager = gameManagers.get(gameId);
 
-    if (!manager) {
+    // Fetch from KV
+    const stored = await c.env.GAME_STATE.get(gameId);
+    if (!stored) {
       return c.json({ error: "Game not found" }, 404);
     }
 
+    const manager = GameManager.deserialize(stored);
     const gameState = manager.getState();
     const plant = manager.getPlant();
     const tank = manager.getTank();
@@ -85,14 +98,19 @@ app.get("/api/game/:gameId/state", (c) => {
 app.post("/api/game/:gameId/harvest", async (c) => {
   try {
     const { gameId } = c.req.param();
-    const manager = gameManagers.get(gameId);
 
-    if (!manager) {
+    // Fetch from KV
+    const stored = await c.env.GAME_STATE.get(gameId);
+    if (!stored) {
       return c.json({ error: "Game not found" }, 404);
     }
 
+    const manager = GameManager.deserialize(stored);
     const harvestData: HarvestRequest = await c.req.json();
     const result = manager.harvest(harvestData);
+
+    // Persist back to KV
+    await c.env.GAME_STATE.put(gameId, manager.serialize());
     return c.json(result);
   } catch (error: any) {
     return c.json({ error: error.message }, 400);

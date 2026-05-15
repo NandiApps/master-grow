@@ -5,6 +5,7 @@ import { MonitorPanel } from '../components/MonitorPanel';
 import { ControlPanel } from '../components/ControlPanel';
 import { TrichomeInspector } from '../components/TrichomeInspector';
 import { SessionModal } from '../components/SessionModal';
+import { HarvestScreen } from '../components/HarvestScreen';
 import '../styles/GameScreen.css';
 
 interface Props {
@@ -19,6 +20,7 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showTrichomeModal, setShowTrichomeModal] = useState(false);
+  const [harvestResult, setHarvestResult] = useState<any | null>(null);
 
   // Control states
   const [parUmol, setParUmol] = useState(600);
@@ -82,14 +84,25 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         harvestChoice: 'balanced',
       });
 
-      alert(`Harvest complete!\n\nYield: ${result.finalYieldGrams}g (${result.harvestQuality})\nRevenue: $${result.revenue}\nProfit: $${result.profit}`);
-      onQuit();
+      setHarvestResult(result);
+      setShowTrichomeModal(false);
     } catch (err) {
       setError('Failed to harvest');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleHarvestQuit = () => {
+    setHarvestResult(null);
+    onQuit();
+  };
+
+  const handleNextCycle = () => {
+    setHarvestResult(null);
+    // Reset for next cycle would go here
+    // For now, just clear the harvest result
   };
 
   if (loading && !state) {
@@ -183,6 +196,14 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
           onHarvest={handleHarvest}
           onClose={() => setShowTrichomeModal(false)}
           isHarvestReady={isHarvestReady}
+        />
+      )}
+
+      {harvestResult && (
+        <HarvestScreen
+          result={harvestResult}
+          onNextCycle={handleNextCycle}
+          onQuit={handleHarvestQuit}
         />
       )}
     </div>

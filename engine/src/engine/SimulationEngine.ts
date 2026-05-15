@@ -75,7 +75,10 @@ export class SimulationEngine {
     // Step 13: Tank chemistry drift
     this.updateTankChemistry(plant, tank);
 
-    // Step 14: Reset daily tracking
+    // Step 14: Update yield modifiers (based on plant/tank state)
+    this.updateYieldModifiers(plant, tank, strain, parUmol);
+
+    // Step 15: Reset daily tracking
     this.resetDailyTracking(plant);
 
     plant.gameDay++;
@@ -563,6 +566,43 @@ export class SimulationEngine {
         tank.warnings.push("High TDS - water change recommended");
       }
     }
+  }
+
+  private updateYieldModifiers(
+    plant: PlantState,
+    tank: TankState,
+    strain: StrainGenetics,
+    parUmol: number
+  ): void {
+    // healthFactor: 0.5 at 0% health, 1.0 at 80%+ health
+    const health = plant.physiology.plantHealthPercent;
+    plant.yieldModifiers.healthFactor = Math.max(0.3, health / 100);
+
+    // nutrientBalanceFactor: penalty if N, P, or K are out of range
+    const n = tank.macroNutrients.nitrogenNMgPerLiter;
+    const p = tank.macroNutrients.phosphorusPMgPerLiter;
+    const k = tank.macroNutrients.potassiumKMgPerLiter;
+
+    // Optimal ranges: N 100-180, P 30-60, K 100-180
+    const nOptimal = n >= 100 && n <= 180 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(n - 140) / 200);
+    const pOptimal = p >= 30 && p <= 60 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(p - 45) / 60);
+    const kOptimal = k >= 100 && k <= 180 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(k - 140) / 200);
+    plant.yieldModifiers.nutrientBalanceFactor = (nOptimal + pOptimal + kOptimal) / 3;
+
+    // lightEfficiencyFactor: penalty if PAR is out of optimal range (600-1000 µmol)
+    const parOptimalMin = 600;
+    const parOptimalMax = 1000;
+    let lightFactor = 1.0;
+    if (parUmol < parOptimalMin) {
+      lightFactor = 0.5 + (parUmol / parOptimalMin) * 0.5; // 0.5 at 0 PAR, 1.0 at 600
+    } else if (parUmol > parOptimalMax) {
+      lightFactor = 1.0 - ((parUmol - parOptimalMax) / 200) * 0.3; // Penalize high PAR
+    }
+    plant.yieldModifiers.lightEfficiencyFactor = Math.max(0.3, lightFactor);
+
+    // stressPenaltyFactor: penalty based on total stress percentage
+    const stressPercent = plant.stressIndicators.totalStressPercent || 0;
+    plant.yieldModifiers.stressPenaltyFactor = Math.max(0.5, 1.0 - stressPercent / 100);
   }
 
   private resetDailyTracking(plant: PlantState): void {

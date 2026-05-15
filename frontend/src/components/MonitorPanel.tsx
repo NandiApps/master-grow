@@ -1,4 +1,5 @@
 import { GameStateResponse } from '../types';
+import { PlantVisual } from './PlantVisual';
 import '../styles/MonitorPanel.css';
 
 interface Props {
@@ -47,6 +48,11 @@ export function MonitorPanel({ state }: Props) {
 
   return (
     <div className="monitor-panel">
+      {/* Plant Visual */}
+      <div className="monitor-section">
+        <PlantVisual plant={plant} />
+      </div>
+
       {/* Growth Stage */}
       <div className="monitor-section">
         <h3>Growth Status</h3>

@@ -499,4 +499,26 @@ export class GameManager {
   getTank(): TankState | null {
     return this.tankState;
   }
+
+  serialize(): string {
+    const stateSnapshot = {
+      gameState: this.gameState,
+      plantState: this.plantState,
+      tankState: this.tankState,
+    };
+    return JSON.stringify(stateSnapshot);
+  }
+
+  static deserialize(json: string): GameManager {
+    const manager = new GameManager();
+    try {
+      const stateSnapshot = JSON.parse(json);
+      manager.gameState = stateSnapshot.gameState;
+      manager.plantState = stateSnapshot.plantState;
+      manager.tankState = stateSnapshot.tankState;
+    } catch (error) {
+      throw new Error(`Failed to deserialize game state: ${error}`);
+    }
+    return manager;
+  }
 }

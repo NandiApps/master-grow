@@ -14,7 +14,6 @@ interface Props {
   onTemperatureChange: (value: number) => void;
   selectedAdditives: Array<{ id: string; doseMl: number }>;
   onAdditivesChange: (additives: Array<{ id: string; doseMl: number }>) => void;
-  nutrientTopUp?: { baseNutrientMl: number; phUpMl?: number; phDownMl?: number };
   onNutrientTopUp?: (topUp: { baseNutrientMl: number; phUpMl?: number; phDownMl?: number }) => void;
   gameClient: GameClient;
 }
@@ -30,7 +29,6 @@ export function ControlPanel({
   onTemperatureChange,
   selectedAdditives,
   onAdditivesChange,
-  nutrientTopUp = { baseNutrientMl: 0 },
   onNutrientTopUp,
   gameClient,
 }: Props) {
