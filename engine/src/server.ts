@@ -158,13 +158,20 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Endpoint not found" });
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`HydroGrow API running on http://localhost:${port}`);
-  console.log(`POST   /api/game/start - Start new game`);
-  console.log(`POST   /api/game/:gameId/day - Execute game day`);
-  console.log(`GET    /api/game/:gameId/state - Get game state`);
-  console.log(`POST   /api/game/:gameId/harvest - Harvest plant`);
-  console.log(`GET    /api/strains - List all strains`);
-  console.log(`GET    /api/additives - List all additives`);
-});
+// Export for Cloudflare Workers
+export default {
+  fetch: app,
+};
+
+// Also support Node.js local development
+if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
+  app.listen(port, () => {
+    console.log(`HydroGrow API running on http://localhost:${port}`);
+    console.log(`POST   /api/game/start - Start new game`);
+    console.log(`POST   /api/game/:gameId/day - Execute game day`);
+    console.log(`GET    /api/game/:gameId/state - Get game state`);
+    console.log(`POST   /api/game/:gameId/harvest - Harvest plant`);
+    console.log(`GET    /api/strains - List all strains`);
+    console.log(`GET    /api/additives - List all additives`);
+  });
+}
