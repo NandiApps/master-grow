@@ -28,10 +28,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          secrets: |
-            NODE_ENV
-        env:
-          NODE_ENV: production
 
   deploy-frontend:
     name: Deploy Frontend to Cloudflare Pages
@@ -50,7 +46,7 @@ jobs:
       - name: Build frontend
         run: cd frontend && npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://hydrogrow-api.workers.dev' }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
