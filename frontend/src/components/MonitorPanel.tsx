@@ -163,6 +163,41 @@ export function MonitorPanel({ state }: Props) {
         </div>
       </div>
 
+      {/* Macronutrients */}
+      <div className="monitor-section">
+        <h3>Nutrients (mg/L)</h3>
+        <div className="metrics-grid">
+          <div className="metric">
+            <span className="metric-label">N</span>
+            <span className={`metric-value ${tank.macroNutrients.nitrogenNMgPerLiter < 80 ? 'danger' : ''}`}>
+              {tank.macroNutrients.nitrogenNMgPerLiter.toFixed(0)}
+            </span>
+            <span className="metric-range">&gt;80</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">P</span>
+            <span className={`metric-value ${tank.macroNutrients.phosphorusPMgPerLiter < 30 ? 'danger' : ''}`}>
+              {tank.macroNutrients.phosphorusPMgPerLiter.toFixed(0)}
+            </span>
+            <span className="metric-range">&gt;30</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">K</span>
+            <span className={`metric-value ${tank.macroNutrients.potassiumKMgPerLiter < 100 ? 'danger' : ''}`}>
+              {tank.macroNutrients.potassiumKMgPerLiter.toFixed(0)}
+            </span>
+            <span className="metric-range">&gt;100</span>
+          </div>
+          <div className="metric">
+            <span className="metric-label">Ca</span>
+            <span className={`metric-value ${tank.macroNutrients.calciumCaMgPerLiter < 120 ? 'danger' : ''}`}>
+              {tank.macroNutrients.calciumCaMgPerLiter.toFixed(0)}
+            </span>
+            <span className="metric-range">&gt;120</span>
+          </div>
+        </div>
+      </div>
+
       {/* Environment */}
       <div className="monitor-section">
         <h3>Environment</h3>

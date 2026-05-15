@@ -275,17 +275,65 @@ export class GameManager {
       throw new Error("Game not started");
     }
 
+    // Reset growth tracking from previous day (before simulation)
+    this.plantState.morphology.heightGrowthTodayMm = 0;
+    this.plantState.nutrientUptakeToday = { nMg: 0, pMg: 0, kMg: 0, caMg: 0, mgMg: 0, siMg: 0 };
+
     // Update environment
     this.tankState.roomEnvironment.lightParUmolPerM2PerS = actions.parUmol;
     this.tankState.roomEnvironment.relativeHumidityPercent = actions.humidityTarget;
     this.tankState.roomEnvironment.airTemperatureCelsius = actions.waterTemperatureTarget;
+
+    // Apply nutrient top-up (base nutrients)
+    if (actions.nutrientTopUp?.baseNutrientMl) {
+      const ml = actions.nutrientTopUp.baseNutrientMl;
+      const costPerMl = 0.05; // $50/L base nutrient concentrate
+      const costAud = ml * costPerMl;
+
+      this.gameState.economics.currentCashAud -= costAud;
+      this.gameState.economics.totalSpentAud += costAud;
+      this.gameState.economics.spendingBreakdown.nutrientsAud += costAud;
+      this.gameState.statistics.nutrientDosedTimes++;
+
+      // Raise tank nutrient levels (NPK concentrate)
+      const nBoost = (ml * 50) / this.tankState.specifications.volumeLiters;
+      const pBoost = (ml * 20) / this.tankState.specifications.volumeLiters;
+      const kBoost = (ml * 40) / this.tankState.specifications.volumeLiters;
+
+      this.tankState.macroNutrients.nitrogenNMgPerLiter = Math.min(
+        200,
+        this.tankState.macroNutrients.nitrogenNMgPerLiter + nBoost
+      );
+      this.tankState.macroNutrients.phosphorusPMgPerLiter = Math.min(
+        80,
+        this.tankState.macroNutrients.phosphorusPMgPerLiter + pBoost
+      );
+      this.tankState.macroNutrients.potassiumKMgPerLiter = Math.min(
+        250,
+        this.tankState.macroNutrients.potassiumKMgPerLiter + kBoost
+      );
+    }
+
+    // Apply pH adjustments
+    if (actions.nutrientTopUp?.phUpMl) {
+      const ml = actions.nutrientTopUp.phUpMl;
+      this.tankState.waterChemistry.ph = Math.min(7.0, this.tankState.waterChemistry.ph + ml * 0.1);
+      this.gameState.economics.currentCashAud -= ml * 0.02;
+      this.gameState.economics.totalSpentAud += ml * 0.02;
+    }
+    if (actions.nutrientTopUp?.phDownMl) {
+      const ml = actions.nutrientTopUp.phDownMl;
+      this.tankState.waterChemistry.ph = Math.max(5.0, this.tankState.waterChemistry.ph - ml * 0.1);
+      this.gameState.economics.currentCashAud -= ml * 0.02;
+      this.gameState.economics.totalSpentAud += ml * 0.02;
+    }
 
     // Apply additives
     if (actions.additiveApplications) {
       for (const app of actions.additiveApplications) {
         const additive = getAdditive(app.additiveId);
         const costAud = (app.doseMl * additive.costPerMl);
-        
+
         this.gameState.economics.currentCashAud -= costAud;
         this.gameState.economics.totalSpentAud += costAud;
         this.gameState.economics.spendingBreakdown.additivesAud += costAud;
@@ -293,7 +341,7 @@ export class GameManager {
 
         // Tank concentration update
         const concentration = (app.doseMl * 1000) / this.tankState.specifications.volumeLiters;
-        
+
         if (additive.type === "chitosan") {
           this.tankState.additivesActive.chitosanMgPerLiter = concentration;
           this.tankState.additivesActive.chitosanDaysSinceApplication = 0;
@@ -315,6 +363,16 @@ export class GameManager {
       }
     }
 
+    // Increment flowering days BEFORE simulation (so stage checks use correct day count)
+    if (this.plantState.flowering.floweringInitiated) {
+      this.plantState.flowering.daysInFlower++;
+      const strain = getStrain(this.plantState.strainId);
+      this.plantState.flowering.floweringProgressPercent = Math.min(
+        100,
+        (this.plantState.flowering.daysInFlower / strain.floweringTimeDays) * 100
+      );
+    }
+
     // Run simulation
     this.simulationEngine.updateDay(
       this.plantState,
@@ -325,15 +383,15 @@ export class GameManager {
       actions.waterTemperatureTarget
     );
 
-    // Increment flowering days
-    if (this.plantState.flowering.floweringInitiated) {
-      this.plantState.flowering.daysInFlower++;
-      const strain = getStrain(this.plantState.strainId);
-      this.plantState.flowering.floweringProgressPercent = Math.min(
-        100,
-        (this.plantState.flowering.daysInFlower / strain.floweringTimeDays) * 100
-      );
-    }
+    // Deduct electricity costs (stored in siMg * 100 during simulation)
+    const dailyKwhUsed = this.plantState.nutrientUptakeToday.siMg / 100;
+    const electricityRate = this.gameState.settings.electricityRateAudPerKwh;
+    const dailyCost = dailyKwhUsed * electricityRate;
+    this.gameState.economics.currentCashAud -= dailyCost;
+    this.gameState.economics.totalSpentAud += dailyCost;
+    this.gameState.economics.spendingBreakdown.electricityAud += dailyCost;
+    this.gameState.economics.electricityTracking.totalKwhUsed += dailyKwhUsed;
+    this.gameState.economics.electricityTracking.totalElectricityCostAud += dailyCost;
 
     // Update game day
     this.gameState.currentGameDay++;

@@ -48,6 +48,9 @@ export class SimulationEngine {
     // Step 5: Plant morphology (height, stem diameter with SuperSi boost)
     this.updateMorphology(plant, tank, strain);
 
+    // Step 5.5: Chlorophyll development
+    this.updateChlorophyll(plant, tank);
+
     // Step 6: Root mass growth
     this.updateRootMass(plant, tank);
 
@@ -114,6 +117,20 @@ export class SimulationEngine {
       plant.growthStage.daysInStage = 0;
     }
     plant.growthStage.daysInStage++;
+
+    // Calculate stage progress percentage
+    const stageDurations: { [key: string]: number } = {
+      seedling: 7,
+      vegetative: 21,
+      early_flower: 21,
+      late_flower: strain.floweringTimeDays - 28,
+      harvest_ready: 7,
+    };
+    const totalForStage = stageDurations[plant.growthStage.stage] || 7;
+    plant.growthStage.stageProgressPercent = Math.min(
+      100,
+      (plant.growthStage.daysInStage / totalForStage) * 100
+    );
   }
 
   private calculatePhotosynthesisRate(
@@ -148,19 +165,19 @@ export class SimulationEngine {
     tank: TankState,
     strain: StrainGenetics
   ): void {
-    // Stage-dependent uptake rates (mg/day)
-    let nUptake = 15;
-    let pUptake = 8;
-    let kUptake = 20;
+    // Stage-dependent uptake rates (mg/day) - increased 5x for gameplay
+    let nUptake = 75;
+    let pUptake = 40;
+    let kUptake = 100;
 
     if (plant.growthStage.stage === "vegetative") {
-      nUptake = 20;
-      pUptake = 6;
-      kUptake = 18;
+      nUptake = 100;
+      pUptake = 30;
+      kUptake = 90;
     } else if (plant.growthStage.stage.includes("flower")) {
-      nUptake = 10;
-      pUptake = 12;
-      kUptake = 25;
+      nUptake = 50;
+      pUptake = 60;
+      kUptake = 125;
     }
 
     // Scale by photosynthesis rate
@@ -237,6 +254,40 @@ export class SimulationEngine {
     }
   }
 
+  private updateChlorophyll(plant: PlantState, tank: TankState): void {
+    // Chlorophyll development based on light and health
+    let chlorophyllGrowth = 0.8; // Base 0.8% per day
+
+    // Light-dependent (higher PAR = faster chlorophyll)
+    const parModifier = Math.min(1.5, plant.lightResponse.currentParUmol / 600);
+    chlorophyllGrowth *= parModifier;
+
+    // Health-dependent
+    const healthModifier = plant.physiology.plantHealthPercent / 100;
+    chlorophyllGrowth *= healthModifier;
+
+    // N-dependent (nitrogen is critical for chlorophyll synthesis)
+    const nAvailable = tank.macroNutrients.nitrogenNMgPerLiter;
+    if (nAvailable < 50) {
+      chlorophyllGrowth *= 0.5; // Half growth if N is low
+    } else if (nAvailable > 120) {
+      chlorophyllGrowth *= 1.2; // Boost if N is abundant
+    }
+
+    // Stage-dependent
+    if (plant.growthStage.stage === "seedling") {
+      chlorophyllGrowth *= 1.5; // Seedlings need fast chlorophyll development
+    } else if (plant.growthStage.stage.includes("flower")) {
+      chlorophyllGrowth *= 0.7; // Reduced during flowering
+    }
+
+    // Cap at 100% and grow from base
+    plant.physiology.chlorophyllPercent = Math.min(
+      100,
+      plant.physiology.chlorophyllPercent + chlorophyllGrowth
+    );
+  }
+
   private updateRootMass(plant: PlantState, tank: TankState): void {
     // Base root growth 2 grams/day
     let rootGrowth = 2;
@@ -270,7 +321,7 @@ export class SimulationEngine {
 
     // Base accumulation rate (0.5% per day during flower)
     let cbdaRate = 0.5;
-    let thcaRate = (strain.thcPercent / strain.floweringTimeDays) * 100;
+    let thcaRate = strain.thcPercent / strain.floweringTimeDays;
 
     // PAR stress boost (>900 µmol triggers senescence)
     if (plant.lightResponse.currentParUmol > 900) {
@@ -424,13 +475,45 @@ export class SimulationEngine {
     const temp = tank.roomEnvironment.airTemperatureCelsius;
     const airFlow = tank.roomEnvironment.airChangesPerHour;
 
-    // Powdery mildew risk (high humidity, low airflow)
-    const pmRisk = humidity > 70 && airFlow < 4 ? 0.15 : 0.02;
-    plant.visibleSymptoms.powderyMildew = Math.random() < pmRisk;
+    // Powdery mildew requires sustained bad conditions (>72 hours at >70% RH and <4 ACH)
+    const pmConditionsActive = humidity > 70 && airFlow < 4;
+    if (pmConditionsActive) {
+      if (!plant.stressIndicators.diseasePressureCounters) {
+        plant.stressIndicators.diseasePressureCounters = {};
+      }
+      plant.stressIndicators.diseasePressureCounters.pmDaysExposed =
+        (plant.stressIndicators.diseasePressureCounters.pmDaysExposed || 0) + 1;
 
-    // Botrytis risk (high humidity, cool temps)
-    const botrytisRisk = humidity > 75 && temp < 20 ? 0.2 : 0.03;
-    plant.visibleSymptoms.botrytis = Math.random() < botrytisRisk;
+      if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed > 3) {
+        plant.visibleSymptoms.powderyMildew = true;
+      }
+    } else {
+      plant.stressIndicators.diseasePressureCounters = {
+        ...plant.stressIndicators.diseasePressureCounters,
+        pmDaysExposed: 0
+      };
+      plant.visibleSymptoms.powderyMildew = false;
+    }
+
+    // Botrytis requires sustained bad conditions (>72 hours at >75% RH and <20°C)
+    const botrytisConditionsActive = humidity > 75 && temp < 20;
+    if (botrytisConditionsActive) {
+      if (!plant.stressIndicators.diseasePressureCounters) {
+        plant.stressIndicators.diseasePressureCounters = {};
+      }
+      plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed =
+        (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed || 0) + 1;
+
+      if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed > 3) {
+        plant.visibleSymptoms.botrytis = true;
+      }
+    } else {
+      plant.stressIndicators.diseasePressureCounters = {
+        ...plant.stressIndicators.diseasePressureCounters,
+        botrytilsDaysExposed: 0
+      };
+      plant.visibleSymptoms.botrytis = false;
+    }
 
     // Chitosan reduces disease risk 40%
     const chitosanFactor = tank.additivesActive.chitosanMgPerLiter > 0 ? 0.6 : 1.0;
@@ -451,8 +534,10 @@ export class SimulationEngine {
 
     // + heater usage (estimated)
     const heaterKwh = (tank.specifications.heaterWattage / 1000) * 0.5; // ~50% duty cycle
+    const totalKwh = dailyKwh + heaterKwh;
 
-    plant.nutrientUptakeToday.siMg = 0; // Placeholder for tracking
+    // Store for GameManager to deduct from cash
+    plant.nutrientUptakeToday.siMg = totalKwh * 100; // Store in siMg temporarily (scaled by 100 for precision)
   }
 
   private updateTankChemistry(plant: PlantState, tank: TankState): void {
@@ -481,10 +566,12 @@ export class SimulationEngine {
   }
 
   private resetDailyTracking(plant: PlantState): void {
-    plant.morphology.heightGrowthTodayMm = 0;
+    // Store previous day's growth for UI display (will be cleared at START of next day)
+    // plant.morphology.heightGrowthTodayMm is intentionally NOT reset here
+
     plant.physiology.chlorophyllChangeTodayPercent = 0;
     plant.physiology.plantHealthChangeTodayPercent = 0;
-    plant.nutrientUptakeToday = { nMg: 0, pMg: 0, kMg: 0, caMg: 0, mgMg: 0, siMg: 0 };
+    // nutrientUptakeToday kept for cycle end tracking
 
     // Decay additive presence
     if (plant.gameDay % 7 === 0) {

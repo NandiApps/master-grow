@@ -132,6 +132,10 @@ export interface StressIndicators {
   photoinhibitionActive: boolean;
   hypoxiaActive: boolean;
   totalStressPercent: number;
+  diseasePressureCounters?: {
+    pmDaysExposed?: number;
+    botrytilsDaysExposed?: number;
+  };
 }
 
 export interface AdditiveApplication {
@@ -416,6 +420,11 @@ export interface GameDayActionRequest {
     additiveId: string;
     doseMl: number;
   }>;
+  nutrientTopUp?: {
+    baseNutrientMl: number;  // mL of balanced base nutrient (NPK concentrate)
+    phUpMl?: number;
+    phDownMl?: number;
+  };
   maintenanceActions?: string[];
 }
 

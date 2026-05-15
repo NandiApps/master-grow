@@ -14,6 +14,8 @@ interface Props {
   onTemperatureChange: (value: number) => void;
   selectedAdditives: Array<{ id: string; doseMl: number }>;
   onAdditivesChange: (additives: Array<{ id: string; doseMl: number }>) => void;
+  nutrientTopUp?: { baseNutrientMl: number; phUpMl?: number; phDownMl?: number };
+  onNutrientTopUp?: (topUp: { baseNutrientMl: number; phUpMl?: number; phDownMl?: number }) => void;
   gameClient: GameClient;
 }
 
@@ -28,11 +30,16 @@ export function ControlPanel({
   onTemperatureChange,
   selectedAdditives,
   onAdditivesChange,
+  nutrientTopUp = { baseNutrientMl: 0 },
+  onNutrientTopUp,
   gameClient,
 }: Props) {
   const [additives, setAdditives] = useState<AdditiveProduct[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>('light');
   const [loading, setLoading] = useState(true);
+  const [baseNutrientMl, setBaseNutrientMl] = useState(0);
+  const [phUpMl, setPhUpMl] = useState(0);
+  const [phDownMl, setPhDownMl] = useState(0);
 
   useEffect(() => {
     const loadAdditives = async () => {
@@ -239,6 +246,73 @@ export function ControlPanel({
                 )}
               </>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Nutrient Dosing */}
+      <div className="control-section">
+        <button
+          className="section-header"
+          onClick={() => setExpandedSection(expandedSection === 'nutrients' ? null : 'nutrients')}
+        >
+          <span className="section-title">💧 Feed Tank</span>
+          <span className="expand-icon">{expandedSection === 'nutrients' ? '▼' : '▶'}</span>
+        </button>
+
+        {expandedSection === 'nutrients' && (
+          <div className="section-content">
+            <div className="control-item">
+              <label>Base Nutrient: {baseNutrientMl}mL (~${(baseNutrientMl * 0.05).toFixed(2)})</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={baseNutrientMl}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setBaseNutrientMl(val);
+                  if (onNutrientTopUp) onNutrientTopUp({ baseNutrientMl: val, phUpMl, phDownMl });
+                }}
+                className="slider"
+              />
+              <div className="control-hint">Balanced NPK concentrate for 20L tank</div>
+            </div>
+
+            <div className="control-item">
+              <label>pH Up: {phUpMl}mL</label>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="1"
+                value={phUpMl}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setPhUpMl(val);
+                  if (onNutrientTopUp) onNutrientTopUp({ baseNutrientMl, phUpMl: val, phDownMl });
+                }}
+                className="slider"
+              />
+            </div>
+
+            <div className="control-item">
+              <label>pH Down: {phDownMl}mL</label>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="1"
+                value={phDownMl}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setPhDownMl(val);
+                  if (onNutrientTopUp) onNutrientTopUp({ baseNutrientMl, phUpMl, phDownMl: val });
+                }}
+                className="slider"
+              />
+            </div>
           </div>
         )}
       </div>
