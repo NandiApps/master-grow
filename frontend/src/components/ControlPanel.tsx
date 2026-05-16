@@ -142,6 +142,19 @@ export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, 
         <div className="summary-row"><span>Selected Additives:</span><span className="summary-value">{selectedAdditives.length}</span></div>
         <div className="summary-row"><span>Total Dose:</span><span className="summary-value">{selectedAdditives.reduce((sum, a) => sum + a.doseMl, 0)} mL</span></div>
       </div>
+
+      <div className="control-section" style={{ backgroundColor: 'rgba(100, 150, 255, 0.1)', borderLeft: '4px solid #6496ff' }}>
+        <label className="control-label"><span className="label-text">💧 Tank EC Management</span></label>
+        <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>
+          <strong>EC dropping?</strong> Use 🌱 Nutrient Top-Up slider to add base nutrient (10-20 mL every 7-10 days)
+        </small>
+        <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>
+          <strong>EC too high?</strong> Use → Week button to skip 7 days and wait for plant uptake, OR reduce nutrient additions
+        </small>
+        <p style={{ fontSize: '11px', color: '#888', margin: '0.5rem 0' }}>
+          Target: VEG 1.3–1.7 mS/cm | FLOWER 1.6–2.0 mS/cm | Use feedback in 📊 Dashboard to monitor
+        </p>
+      </div>
     </div>
   );
 }

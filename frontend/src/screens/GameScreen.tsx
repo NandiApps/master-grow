@@ -247,7 +247,7 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
 
   if (!state) return null;
 
-  const isFlowering = state.plant.flowering.floweringInitiated;
+  const isFlowering = state.plant.flowering.floweringInitiated || state.plant.growthStage.stage.includes('flower');
   const isHarvestReady = state.plant.growthStage.stage === 'harvest_ready';
 
   return (
