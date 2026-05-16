@@ -14,7 +14,15 @@ export interface GameDayActionRequest {
   lightScheduleHoursOn: number;
   lightScheduleHoursOff: number;
   waterTemperatureTarget: number;
+  waterTemperatureCelsius?: number;
+  co2TargetPpm?: number;
+  exhaustFanPercent?: number;
   humidityTarget: number;
+  nutrientTopUp?: {
+    baseNutrientMl: number;
+    phUpMl?: number;
+    phDownMl?: number;
+  };
   additiveApplications?: Array<{
     additiveId: string;
     doseMl: number;

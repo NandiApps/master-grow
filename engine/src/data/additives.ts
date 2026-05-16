@@ -46,6 +46,26 @@ export const ADDITIVES_DATABASE: Record<string, AdditiveProduct> = {
     dosagePerTank20L: 5,
     applicationFrequencyDays: 10,
   },
+  "calmag-plus": {
+    id: "calmag-plus",
+    name: "Cal-Mag+ Supplement",
+    type: "calmag",
+    costAud: 32.5,
+    bottleSizeMl: 500,
+    costPerMl: 0.065,
+    dosagePerTank20L: 10,
+    applicationFrequencyDays: 7,
+  },
+  "bloom-formula": {
+    id: "bloom-formula",
+    name: "Bloom Formula (High PK)",
+    type: "bloom",
+    costAud: 45.0,
+    bottleSizeMl: 500,
+    costPerMl: 0.09,
+    dosagePerTank20L: 8,
+    applicationFrequencyDays: 3,
+  },
 };
 
 export function getAdditive(additiveId: string): AdditiveProduct {
@@ -61,7 +81,7 @@ export function listAdditives(): AdditiveProduct[] {
 }
 
 export function listAdditivesByType(
-  type: "silicon" | "kelp" | "chitosan" | "meija"
+  type: "silicon" | "kelp" | "chitosan" | "meija" | "calmag" | "bloom"
 ): AdditiveProduct[] {
   return Object.values(ADDITIVES_DATABASE).filter((a) => a.type === type);
 }

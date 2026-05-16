@@ -11,6 +11,18 @@ interface ControlPanelProps {
   onHumidityChange: (value: number) => void;
   temperature: number;
   onTemperatureChange: (value: number) => void;
+  waterTemperature: number;
+  onWaterTemperatureChange: (value: number) => void;
+  co2Ppm: number;
+  onCo2Change: (value: number) => void;
+  exhaustFanPercent: number;
+  onExhaustFanChange: (value: number) => void;
+  phUp: number;
+  onPhUpChange: (value: number) => void;
+  phDown: number;
+  onPhDownChange: (value: number) => void;
+  nutrientTopUp: number;
+  onNutrientTopUpChange: (value: number) => void;
   selectedAdditives: Array<{ id: string; doseMl: number }>;
   onAdditivesChange: (additives: Array<{ id: string; doseMl: number }>) => void;
   gameClient: GameClient;
@@ -23,7 +35,7 @@ interface Additive {
   dosagePerTank20L: number;
 }
 
-export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, humidity, onHumidityChange, temperature, onTemperatureChange, selectedAdditives, onAdditivesChange, gameClient }: ControlPanelProps) {
+export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, humidity, onHumidityChange, temperature, onTemperatureChange, waterTemperature, onWaterTemperatureChange, co2Ppm, onCo2Change, exhaustFanPercent, onExhaustFanChange, phUp, onPhUpChange, phDown, onPhDownChange, nutrientTopUp, onNutrientTopUpChange, selectedAdditives, onAdditivesChange, gameClient }: ControlPanelProps) {
   const [additives, setAdditives] = useState<Additive[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +92,43 @@ export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, 
         <label className="control-label"><span className="label-text">💨 Humidity</span><span className="value-display">{humidity}%</span></label>
         <input type="range" min="30" max="80" step="1" value={humidity} onChange={e => onHumidityChange(Number(e.target.value))} className="control-slider" />
         <div className="range-hints"><small>30%</small><small>60%</small><small>80%</small></div>
+      </div>
+      <div className="control-section">
+        <label className="control-label"><span className="label-text">🌊 Water Temperature</span><span className="value-display">{waterTemperature}°C</span></label>
+        <input type="range" min="18" max="24" step="0.5" value={waterTemperature} onChange={e => onWaterTemperatureChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>18°C</small><small>21°C</small><small>24°C</small></div>
+        <small style={{ color: '#999', display: 'block', marginTop: '0.5rem' }}>Optimal: 18–22°C (prevents root rot)</small>
+      </div>
+      <div className="control-section">
+        <label className="control-label"><span className="label-text">🌫️ CO₂ (ppm)</span><span className="value-display">{co2Ppm} ppm</span></label>
+        <input type="range" min="400" max="1500" step="50" value={co2Ppm} onChange={e => onCo2Change(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>400 (ambient)</small><small>1000</small><small>1500 (max)</small></div>
+        <small style={{ color: '#999', display: 'block', marginTop: '0.5rem' }}>Higher CO₂ during flower boosts yield</small>
+      </div>
+      <div className="control-section">
+        <label className="control-label"><span className="label-text">🌪️ Exhaust Fan</span><span className="value-display">{exhaustFanPercent}%</span></label>
+        <input type="range" min="0" max="100" step="5" value={exhaustFanPercent} onChange={e => onExhaustFanChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>0% (off)</small><small>50%</small><small>100% (max)</small></div>
+        <small style={{ color: '#999', display: 'block', marginTop: '0.5rem' }}>Raises air circulation, lowers humidity</small>
+      </div>
+      <div className="control-section">
+        <label className="control-label"><span className="label-text">🧪 pH Adjustments</span></label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}><span style={{ fontSize: '0.85rem' }}>pH Up (mL)</span><span style={{ float: 'right', fontWeight: 'bold' }}>{phUp}</span></label>
+            <input type="range" min="0" max="50" step="1" value={phUp} onChange={e => onPhUpChange(Number(e.target.value))} className="control-slider" />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}><span style={{ fontSize: '0.85rem' }}>pH Down (mL)</span><span style={{ float: 'right', fontWeight: 'bold' }}>{phDown}</span></label>
+            <input type="range" min="0" max="50" step="1" value={phDown} onChange={e => onPhDownChange(Number(e.target.value))} className="control-slider" />
+          </div>
+        </div>
+      </div>
+      <div className="control-section">
+        <label className="control-label"><span className="label-text">🌱 Nutrient Top-Up</span><span className="value-display">{nutrientTopUp} mL</span></label>
+        <input type="range" min="0" max="100" step="1" value={nutrientTopUp} onChange={e => onNutrientTopUpChange(Number(e.target.value))} className="control-slider" />
+        <div className="range-hints"><small>0 mL</small><small>50 mL</small><small>100 mL</small></div>
+        <small style={{ color: '#999', display: 'block', marginTop: '0.5rem' }}>Base nutrient concentrate (NPK 50:20:40)</small>
       </div>
       <div className="control-section additives-section">
         <label className="control-label"><span className="label-text">💊 Additives</span></label>

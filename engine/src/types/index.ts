@@ -105,7 +105,7 @@ export interface StrainGenetics {
 export interface AdditiveProduct {
   id: string;
   name: string;
-  type: "silicon" | "kelp" | "chitosan" | "meija";
+  type: "silicon" | "kelp" | "chitosan" | "meija" | "calmag" | "bloom";
   costAud: number;
   bottleSizeMl: number;
   costPerMl: number;
@@ -493,8 +493,11 @@ export interface GameDayActionRequest {
   parUmol: number;
   lightScheduleHoursOn: number;
   lightScheduleHoursOff: number;
-  waterTemperatureTarget: number;
+  waterTemperatureTarget: number; // Currently used for air temperature (legacy, mislabeled)
+  waterTemperatureCelsius?: number; // Actual water temperature control (18-24°C)
   humidityTarget: number;
+  co2TargetPpm?: number; // CO₂ control (400-1500 ppm)
+  exhaustFanPercent?: number; // Exhaust fan speed (0-100%)
   additiveApplications?: Array<{
     additiveId: string;
     doseMl: number;

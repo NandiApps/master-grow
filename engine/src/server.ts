@@ -169,6 +169,10 @@ app.post("/api/game/:gameId/new-cycle", async (c) => {
     const body: any = await c.req.json();
     const { selectedStrainId } = body;
 
+    if (!selectedStrainId) {
+      return c.json({ error: "selectedStrainId is required" }, 400);
+    }
+
     // Fetch from KV
     const stored = await c.env.GAME_STATE.get(gameId);
     if (!stored) {
@@ -176,9 +180,7 @@ app.post("/api/game/:gameId/new-cycle", async (c) => {
     }
 
     const manager = GameManager.deserialize(stored);
-    // TODO: Implement new cycle logic in GameManager
-    // For now, just return the current state
-    const response = manager.getState();
+    const response = manager.startNewCycle(selectedStrainId);
 
     // Persist back to KV
     await c.env.GAME_STATE.put(gameId, manager.serialize());

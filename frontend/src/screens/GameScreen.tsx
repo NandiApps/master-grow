@@ -44,6 +44,12 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
   const [lightHours, setLightHours] = useState(18);
   const [humidity, setHumidity] = useState(60);
   const [temperature, setTemperature] = useState(22);
+  const [waterTemperature, setWaterTemperature] = useState(20);
+  const [co2Ppm, setCo2Ppm] = useState(400);
+  const [exhaustFanPercent, setExhaustFanPercent] = useState(50);
+  const [phUp, setPhUp] = useState(0);
+  const [phDown, setPhDown] = useState(0);
+  const [nutrientTopUp, setNutrientTopUp] = useState(0);
   const [selectedAdditives, setSelectedAdditives] = useState<Array<{ id: string; doseMl: number }>>([]);
 
   useEffect(() => {
@@ -76,7 +82,15 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         lightScheduleHoursOn: lightHours,
         lightScheduleHoursOff: 24 - lightHours,
         waterTemperatureTarget: temperature,
+        waterTemperatureCelsius: waterTemperature,
+        co2TargetPpm: co2Ppm,
+        exhaustFanPercent: exhaustFanPercent,
         humidityTarget: humidity,
+        nutrientTopUp: {
+          baseNutrientMl: nutrientTopUp,
+          phUpMl: phUp,
+          phDownMl: phDown,
+        },
         additiveApplications: selectedAdditives.map(app => ({
           additiveId: app.id,
           doseMl: app.doseMl,
@@ -86,6 +100,9 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
       const newState = await gameClient.executeGameDay(actions);
       setState(newState);
       setSelectedAdditives([]); // Clear additives after application
+      setPhUp(0); // Reset pH adjustments
+      setPhDown(0);
+      setNutrientTopUp(0); // Reset nutrient top-up
     } catch (err) {
       setError('Failed to execute day');
       console.error(err);
@@ -104,7 +121,15 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         lightScheduleHoursOn: lightHours,
         lightScheduleHoursOff: 24 - lightHours,
         waterTemperatureTarget: temperature,
+        waterTemperatureCelsius: waterTemperature,
+        co2TargetPpm: co2Ppm,
+        exhaustFanPercent: exhaustFanPercent,
         humidityTarget: humidity,
+        nutrientTopUp: {
+          baseNutrientMl: nutrientTopUp,
+          phUpMl: phUp,
+          phDownMl: phDown,
+        },
         additiveApplications: selectedAdditives.map(app => ({
           additiveId: app.id,
           doseMl: app.doseMl,
@@ -115,6 +140,9 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
       const newState = await gameClient.advanceDays(days, actions);
       setState(newState);
       setSelectedAdditives([]); // Clear additives after application
+      setPhUp(0); // Reset pH adjustments
+      setPhDown(0);
+      setNutrientTopUp(0); // Reset nutrient top-up
     } catch (err) {
       setError(`Failed to advance ${days} days`);
       console.error(err);
@@ -253,6 +281,18 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
             onHumidityChange={setHumidity}
             temperature={temperature}
             onTemperatureChange={setTemperature}
+            waterTemperature={waterTemperature}
+            onWaterTemperatureChange={setWaterTemperature}
+            co2Ppm={co2Ppm}
+            onCo2Change={setCo2Ppm}
+            exhaustFanPercent={exhaustFanPercent}
+            onExhaustFanChange={setExhaustFanPercent}
+            phUp={phUp}
+            onPhUpChange={setPhUp}
+            phDown={phDown}
+            onPhDownChange={setPhDown}
+            nutrientTopUp={nutrientTopUp}
+            onNutrientTopUpChange={setNutrientTopUp}
             selectedAdditives={selectedAdditives}
             onAdditivesChange={setSelectedAdditives}
             gameClient={gameClient}

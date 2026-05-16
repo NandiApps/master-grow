@@ -26,8 +26,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Nitrogen deficiency causes yellowing of older leaves first, stunted growth, weak stems, and poor leaf development. The plant cannot produce enough chlorophyll or proteins for growth.',
     tooHigh: 'Excess nitrogen causes excessive vegetative growth, dark green foliage, delayed flowering, reduced resin production, and increased pest susceptibility. The plant becomes too "leafy" at the expense of buds.',
     terpeneImpact: 'Proper nitrogen supports balanced terpene profiles. Excess nitrogen can suppress aromatic compounds, while deficiency reduces overall terpene complexity.',
-    adjustment: 'In vegetative stage: maintain 160-200 mg/L. During early flowering: reduce to 50-100 mg/L to encourage flowering. Use foliar sprays for quick recovery.',
-    suggestedAdditives: ['Kelp (natural N source)', 'Chitosan (improves uptake)', 'General nutrient solution'],
+    adjustment: 'ACTION: Use the 🌱 Nutrient Top-Up control. Add 10-20 mL base nutrient to raise N by ~25-50 mg/L. Expected boost: 10 mL → +25 mg/L, 20 mL → +50 mg/L. Recheck pH after adding nutrients. For flowering, reduce to 50-100 mg/L.',
+    suggestedAdditives: ['Base Nutrient (NPK 50:20:40)', 'Bloom Formula (low N for flower)', 'Kelp (natural N source)'],
   },
 
   phosphorus: {
@@ -39,8 +39,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Phosphorus deficiency causes purple/red discoloration (especially in cool conditions), weak roots, poor flower development, delayed flowering, and reduced bud density. Growth becomes stunted.',
     tooHigh: 'Excess phosphorus locks up other nutrients (especially zinc and iron), causing nutrient deficiencies. It can reduce potassium availability and interfere with flowering.',
     terpeneImpact: 'Adequate phosphorus enhances floral development and supports terpene synthesis during flowering. Deficiency reduces floral mass and terpene expression.',
-    adjustment: 'Maintain 30-60 mg/L vegetative stage. Increase to 60-90 mg/L during flowering to support bud development. Monitor closely in colder conditions.',
-    suggestedAdditives: ['Kelp (natural P source)', 'Flowering nutrients (P-rich)', 'Chitosan (improved nutrient uptake)'],
+    adjustment: 'VEGETATIVE: Use Base Nutrient (10-15 mL → +20-30 mg/L). FLOWERING: Apply 💊 Bloom Formula product. Standard dose: 8 mL per 20L tank raises P by ~24 mg/L. Target 60-90 mg/L during flower. Re-apply every 3 days for sustained P support.',
+    suggestedAdditives: ['Bloom Formula (high P for flower)', 'Base Nutrient (NPK 50:20:40 for veg)', 'Chitosan (improved nutrient uptake)'],
   },
 
   potassium: {
@@ -52,8 +52,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Potassium deficiency causes brown/scorched leaf edges (especially on older leaves), weak stems prone to breaking, poor root development, reduced water uptake, and increased disease susceptibility.',
     tooHigh: 'Excess potassium (>175 mg/L) interferes with calcium and magnesium uptake, causing nutrient lockout. Importantly: excess K dilutes cannabinoid and terpene concentration despite higher overall yield. It reduces potency and aromatic profile quality.',
     terpeneImpact: 'Proper potassium supports strong plant structure and enables plants to invest energy in terpene production. Excess K actually suppresses cannabinoid synthesis relative to biomass. Deficiency reduces aromatic complexity.',
-    adjustment: 'Vegetative: 60-117 mg/L. Early flowering: 117-175 mg/L. Do NOT exceed 175 mg/L or you sacrifice quality for quantity. Maintain proper K:Ca:Mg ratio.',
-    suggestedAdditives: ['Kelp (natural K source)', 'Sulfate-based K supplements', 'Chitosan (improved mobile nutrient transport)'],
+    adjustment: 'VEGETATIVE: Base Nutrient (10-15 mL → +30-40 mg/L). FLOWERING: Apply 💊 Bloom Formula (8 mL raises K by ~32 mg/L). Target 117-175 mg/L in flower. ⚠️ CRITICAL: Do NOT exceed 175 mg/L or quality drops despite higher yield. Maintain K:Ca:Mg ratio.',
+    suggestedAdditives: ['Bloom Formula (high K for flower)', 'Base Nutrient (for veg stage)', 'Cal-Mag (maintain Ca:Mg balance)'],
   },
 
   calcium: {
@@ -65,8 +65,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Calcium deficiency causes tip burn on new leaves, distorted growth, weak cell walls, poor nutrient uptake (especially of potassium), and reduced yield.',
     tooHigh: 'Excess calcium blocks magnesium and potassium uptake, causing deficiencies in those nutrients and reducing plant vigor.',
     terpeneImpact: 'Adequate calcium supports healthy tissues needed for terpene synthesis. Deficiency reduces overall plant vigor and terpene expression.',
-    adjustment: 'Maintain 100-160 mg/L consistently. Use calcium-rich solutions (gypsum, calcium nitrate). Monitor Ca:Mg ratio (3:1 ideal).',
-    suggestedAdditives: ['Calcium supplement (gypsum)', 'Balanced Ca-Mg solutions', 'Foliar calcium sprays for quick uptake'],
+    adjustment: 'ACTION: Select 💊 Cal-Mag+ Supplement from additives. Standard dose: 10 mL per 20L tank raises Ca by ~25 mg/L. Target 100-160 mg/L. Apply every 7 days. Monitor Ca:Mg ratio (ideal 3:1). Maintain consistently throughout cycle.',
+    suggestedAdditives: ['Cal-Mag+ Supplement (raises Ca & Mg)', 'Chitosan (improves nutrient mobility)', 'Bloom Formula (when flowering)'],
   },
 
   ph: {
@@ -78,8 +78,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'pH below 5.5 (too acidic) causes nutrient toxicity (especially manganese and iron), aluminum toxicity, nutrient lockout, and reduced root health.',
     tooHigh: 'pH above 6.5 (too alkaline) causes nutrient deficiencies (especially iron, manganese, zinc), reduced nutrient availability, and poor nutrient uptake.',
     terpeneImpact: 'Proper pH ensures all nutrients are available for terpene synthesis. pH drift prevents nutrient uptake needed for aromatic development.',
-    adjustment: 'For hydro systems: maintain 5.5-6.5 pH. Use pH down (phosphoric acid) or pH up (potassium hydroxide). Buffer with adequate calcium and magnesium.',
-    suggestedAdditives: ['pH Down (phosphoric acid)', 'pH Up (potassium hydroxide)', 'Buffering solutions'],
+    adjustment: 'ACTION: Use 🧪 pH Up/Down controls in ControlPanel. If pH < 5.8: Use pH Up slider (each mL raises pH by ~0.1, so add 5-8 mL to raise by 0.5). If pH > 5.8: Use pH Down slider. Target 5.8 (ideal). Recheck after 1 day. Maintain 5.5-6.5 range.',
+    suggestedAdditives: ['pH Up control (0-50 mL slider)', 'pH Down control (0-50 mL slider)', 'Cal-Mag (buffers pH swings)'],
   },
 
   ec: {
@@ -91,8 +91,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Low EC (below 1.3) causes nutrient deficiency symptoms, slow growth, pale foliage, and poor development.',
     tooHigh: 'High EC (above 1.7) causes salt burn, leaf tip burn, wilting, nutrient lockout, and reduced root health. Plant cannot absorb water properly.',
     terpeneImpact: 'Optimal EC supports healthy nutrient uptake for balanced terpene profiles. Both excess and deficiency reduce terpene complexity.',
-    adjustment: 'Vegetative: 1.3-1.7 mS/cm. Flowering: 1.6-2.0 mS/cm. Adjust by changing nutrient concentration. Monitor daily for drift.',
-    suggestedAdditives: ['Nutrient solutions (adjust concentration)', 'Flush solution (reduce salts)', 'Chelated nutrients (better uptake)'],
+    adjustment: 'ACTION: Use 🌱 Nutrient Top-Up control. If EC too low: add 10-20 mL base nutrient (raises EC ~0.3-0.6 per 20L). If EC too high: water change (dilute). VEGETATIVE target: 1.3-1.7. FLOWERING target: 1.6-2.0. Monitor daily for drift.',
+    suggestedAdditives: ['Nutrient Top-Up (Base nutrient concentrate)', 'Bloom Formula (for flowering stage)', 'Chitosan (improves nutrient uptake)'],
   },
 
   ppm: {
@@ -117,8 +117,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Water below 18°C reduces dissolved oxygen, slows nutrient uptake, inhibits root growth, and risks root disease.',
     tooHigh: 'Water above 23°C dramatically reduces dissolved oxygen and triggers root rot pathogens (Pythium and Fusarium thrive above 23°C). Above 23°C you lose 2% plant health per 0.5°C increase, quickly leading to root failure.',
     terpeneImpact: 'Optimal water temperature supports healthy roots needed for nutrient uptake and terpene synthesis.',
-    adjustment: 'Use aquarium chillers for hot environments. Insulate reservoirs. Keep below 23°C at all costs. Monitor continuously. Even 24°C causes rapid health loss.',
-    suggestedAdditives: ['Water chiller (cooling - CRITICAL)', 'Beneficial bacteria (disease prevention)', 'Enzyme products (improved root health)'],
+    adjustment: 'ACTION: Use 🌊 Water Temperature slider (18-24°C range). If WARM (>23°C): lower to 21-22°C immediately to prevent root rot. Each 0.5°C above 23°C = -2% health/day. If COLD (<18°C): raise to 20-21°C for faster nutrient uptake. Target 18-22°C optimal zone.',
+    suggestedAdditives: ['Water Temperature slider (18-24°C)', 'Beneficial bacteria (if warm)', 'Enzyme products (root health)'],
   },
 
   airTemperature: {
@@ -143,8 +143,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'Humidity below 40% causes excessive transpiration, water stress, wilting, slow growth, and reduced nutrient uptake.',
     tooHigh: 'Humidity above 60% promotes fungal diseases (botrytis, powdery mildew), root issues, and poor gas exchange.',
     terpeneImpact: 'Proper humidity supports transpiration needed for nutrient transport. Excess humidity increases disease risk and can degrade terpenes.',
-    adjustment: 'Vegetative: 40-60%. Flowering: 40-50% to prevent mold. Use humidifiers/dehumidifiers and fans for circulation.',
-    suggestedAdditives: ['Dehumidifier or humidifier', 'Fans (air circulation)', 'Fungicide (if mold appears)'],
+    adjustment: 'ACTION: Use 🌪️ Exhaust Fan slider (0-100%). If humidity TOO HIGH (>60%): run fan at 75-100% for 2-3 hrs to dehumidify. Target: VEG 40-60%, FLOWER 40-50%. If too LOW (<40%): reduce fan speed. Fan at 0% = 0 ACH (no circulation), 100% = 10 ACH (strong ventilation).',
+    suggestedAdditives: ['Exhaust Fan slider (0-100%)', 'Humidity slider (30-80% air target)', 'Fungicide (if humidity stays >65%)'],
   },
 
   par: {
@@ -169,8 +169,8 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     tooLow: 'CO₂ below 400 ppm (below atmospheric baseline) restricts photosynthesis and limits growth potential. No growth benefit occurs below 400 ppm.',
     tooHigh: 'CO₂ above 1500 ppm provides diminishing returns and can damage foliage if combined with high heat/light.',
     terpeneImpact: 'Enhanced CO₂ (600+ ppm) increases overall plant biomass and can improve terpene yields through increased photosynthesis.',
-    adjustment: 'Maintain 600-1200 ppm in sealed rooms for meaningful growth boost. Increase with strong light (>800 µmol). Ensure proper ventilation to maintain levels.',
-    suggestedAdditives: ['CO₂ burner or regulator', 'CO₂ supplementation system', 'Ventilation fans'],
+    adjustment: 'ACTION: Use 🌫️ CO₂ slider (400-1500 ppm). For yield boost during flower: Raise to 1000-1200 ppm. Requires strong light (>800 µmol) and sealed room. Keep exhaust fan low when enriching. Target 400 (ambient) in veg, 1000+ in bloom. Monitor for heat stress.',
+    suggestedAdditives: ['CO₂ slider (400-1500 ppm)', 'Exhaust Fan control (manage CO₂ loss)', 'Light intensity (needed for CO₂ boost)'],
   },
 
   chlorophyll: {

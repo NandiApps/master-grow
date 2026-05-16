@@ -293,7 +293,24 @@ export class GameManager {
     // Update environment
     this.tankState.roomEnvironment.lightParUmolPerM2PerS = actions.parUmol;
     this.tankState.roomEnvironment.relativeHumidityPercent = actions.humidityTarget;
+    // waterTemperatureTarget is mislabeled—it actually controls air temperature (frontend sends air temp)
     this.tankState.roomEnvironment.airTemperatureCelsius = actions.waterTemperatureTarget;
+
+    // Update water temperature if provided (separate control)
+    if (actions.waterTemperatureCelsius !== undefined) {
+      this.tankState.waterChemistry.waterTemperatureCelsius = actions.waterTemperatureCelsius;
+    }
+
+    // Update CO₂ if provided
+    if (actions.co2TargetPpm !== undefined) {
+      this.tankState.roomEnvironment.co2Ppm = Math.max(400, Math.min(1500, actions.co2TargetPpm));
+    }
+
+    // Update exhaust fan speed if provided
+    if (actions.exhaustFanPercent !== undefined) {
+      // Convert percentage to air changes per hour (0-10 ACH)
+      this.tankState.roomEnvironment.airChangesPerHour = (actions.exhaustFanPercent / 100) * 10;
+    }
 
     // Apply nutrient top-up (base nutrients)
     if (actions.nutrientTopUp?.baseNutrientMl) {
@@ -362,6 +379,32 @@ export class GameManager {
           this.tankState.additivesActive.kelpExtractConcentration += concentration;
         } else if (additive.type === "meija") {
           this.tankState.additivesActive.mejaMgPerLiter = concentration;
+        } else if (additive.type === "calmag") {
+          // Cal-Mag+ adds both calcium and magnesium
+          // Typical dosage: 8 mL per 20L provides ~20 mg/L Ca and ~10 mg/L Mg
+          const caBoost = concentration * 2.5; // 2.5 mg Ca per mg/L of product
+          const mgBoost = concentration * 1.25; // 1.25 mg Mg per mg/L of product
+          this.tankState.macroNutrients.calciumCaMgPerLiter = Math.min(
+            200,
+            this.tankState.macroNutrients.calciumCaMgPerLiter + caBoost
+          );
+          this.tankState.macroNutrients.magnesiumMgMgPerLiter = Math.min(
+            100,
+            this.tankState.macroNutrients.magnesiumMgMgPerLiter + mgBoost
+          );
+        } else if (additive.type === "bloom") {
+          // Bloom formula boosts P and K for flowering
+          // Typical ratios: high P and K, low N
+          const pBoost = concentration * 3.0; // High phosphorus boost
+          const kBoost = concentration * 4.0; // High potassium boost
+          this.tankState.macroNutrients.phosphorusPMgPerLiter = Math.min(
+            150,
+            this.tankState.macroNutrients.phosphorusPMgPerLiter + pBoost
+          );
+          this.tankState.macroNutrients.potassiumKMgPerLiter = Math.min(
+            300,
+            this.tankState.macroNutrients.potassiumKMgPerLiter + kBoost
+          );
         }
 
         this.plantState.additiveHistory.push({
@@ -503,6 +546,7 @@ export class GameManager {
   /**
    * Advance game by multiple days (Tomorrow, 3 Days, or Week)
    * Locks controls during advancement
+   * Additives only apply on day 1; environmental controls locked for all days
    */
   advanceDays(daysToAdvance: number, actions: GameDayActionRequest): GameStateResponse {
     if (!this.gameState || !this.plantState || !this.tankState) {
@@ -511,8 +555,167 @@ export class GameManager {
 
     // Advance days with provided settings locked in
     for (let i = 0; i < daysToAdvance; i++) {
-      this.executeGameDay(actions);
+      // Only apply additives on the first day of the advance
+      const actionsForDay = i === 0
+        ? actions
+        : { ...actions, additiveApplications: undefined };
+
+      this.executeGameDay(actionsForDay);
     }
+
+    return this.getGameState();
+  }
+
+  /**
+   * Start a new growth cycle with a different strain
+   * Called after harvest to grow another plant
+   */
+  startNewCycle(newStrainId: string): GameStateResponse {
+    if (!this.gameState || !this.plantState || !this.tankState) {
+      throw new Error("Game not initialized");
+    }
+
+    const newStrain = getStrain(newStrainId);
+
+    // Increment cycle number
+    this.gameState.cycleInformation.cycleNumber++;
+    this.gameState.cycleInformation.selectedStrainId = newStrainId;
+    this.gameState.cycleInformation.selectedStrainName = newStrain.name;
+    this.gameState.cycleInformation.seedPurchasedDay = this.gameState.currentGameDay;
+    this.gameState.cycleInformation.seedCostAud = newStrain.seedCostAud;
+    this.gameState.cycleInformation.germinationDay = this.gameState.currentGameDay + 3;
+    this.gameState.cycleInformation.seedlingTransplantDay = this.gameState.currentGameDay + 7;
+    this.gameState.cycleInformation.expectedHarvestDay =
+      this.gameState.currentGameDay + 7 + newStrain.floweringTimeDays + 21;
+    this.gameState.cycleInformation.harvestStatus = "growing";
+    this.gameState.cycleInformation.harvestDay = null;
+    this.gameState.cycleInformation.finalYieldGrams = null;
+    this.gameState.cycleInformation.finalYieldQuality = null;
+
+    // Deduct seed cost from current budget
+    this.gameState.economics.currentCashAud -= newStrain.seedCostAud;
+    this.gameState.economics.totalSpentAud += newStrain.seedCostAud;
+    this.gameState.economics.spendingBreakdown.seedsAud += newStrain.seedCostAud;
+
+    // Reset plant state for new strain
+    const plantId = uuidv4();
+    this.plantState = {
+      plantId,
+      gameDay: this.gameState.currentGameDay,
+      strainId: newStrainId,
+      growCycleNumber: this.gameState.cycleInformation.cycleNumber,
+      morphology: {
+        heightCm: 1,
+        heightGrowthTodayMm: 0,
+        stemDiameterMm: 2,
+        leafAreaIndex: 0.5,
+        nodeCount: 2,
+        branchCount: 0,
+      },
+      physiology: {
+        chlorophyllPercent: 50,
+        chlorophyllChangeTodayPercent: 0,
+        plantHealthPercent: 100,
+        plantHealthChangeTodayPercent: 0,
+        rootMassDryWeightGrams: 5,
+        rootDevelopmentPercent: 10,
+        biomassDryWeightGrams: 2,
+      },
+      growthStage: {
+        stage: "seedling",
+        daysInStage: 0,
+        stageProgressPercent: 0,
+        nextStage: "vegetative",
+        daysToNextStage: 7,
+      },
+      lightResponse: {
+        currentParUmol: 600,
+        lightScheduleHoursOn: 18,
+        lightScheduleHoursOff: 6,
+        photosynthesisRateRelative: 0.6,
+        photoinhibitionRiskPercent: 0,
+        parStressResponseActive: false,
+      },
+      flowering: {
+        floweringInitiated: false,
+        floweringStartDay: null,
+        daysInFlower: 0,
+        floweringProgressPercent: 0,
+        expectedHarvestDay: null,
+        flowerStretchPhase: false,
+        budDensityScale1To10: newStrain.budDensity1To10,
+      },
+      cannabinoids: {
+        cbdaAccumulationPercent: 0,
+        thcaAccumulationPercent: 0,
+        cbnAccumulationPercent: 0,
+        thcEquivalentPercentIfHarvested: 0,
+        cbdEquivalentPercentIfHarvested: 0,
+        totalCannabinoidsPercent: 0,
+      },
+      trichomeMaturity: {
+        clearTrichomesPercent: 100,
+        cloudyTrichomesPercent: 0,
+        amberTrichomesPercent: 0,
+        maturationStartDay: null,
+        daysTopeakMaturity: 14,
+        optimalHarvestDayLowPar: 0,
+        optimalHarvestDayHighPar: 0,
+      },
+      visibleSymptoms: {
+        nitrogenDeficiency: false,
+        phosphorusDeficiency: false,
+        potassiumDeficiency: false,
+        calciumDeficiency: false,
+        magnesiumDeficiency: false,
+        powderyMildew: false,
+        botrytis: false,
+        nutrientBurn: false,
+        lightBurn: false,
+      },
+      stressIndicators: {
+        heatStressActive: false,
+        coldStressActive: false,
+        humidityStressActive: false,
+        nutrientLockoutActive: false,
+        photoinhibitionActive: false,
+        hypoxiaActive: false,
+        totalStressPercent: 0,
+      },
+      additiveHistory: [],
+      nutrientUptakeToday: { nMg: 0, pMg: 0, kMg: 0, caMg: 0, mgMg: 0, siMg: 0 },
+      cumulativeYieldEstimateGrams: newStrain.baseYieldGrams,
+      yieldTracking: {
+        currentEstimateGrams: newStrain.yieldProfile.yieldGramsTypical,
+        peakYieldDay: null,
+        peakYieldGrams: 0,
+        harvestQualityScore: 0,
+        qualityTier: "C",
+        daysSincePeak: 0,
+        qualityLossPercent: 0,
+      },
+      yieldModifiers: {
+        geneticBase: 1.0,
+        healthFactor: 1.0,
+        nutrientBalanceFactor: 1.0,
+        lightEfficiencyFactor: 1.0,
+        stressPenaltyFactor: 1.0,
+      },
+    };
+
+    // Update plant roster
+    this.gameState.plantRoster.push({
+      plantId,
+      status: "growing",
+      strainId: newStrainId,
+    });
+
+    // Add notification
+    this.gameState.notifications.push({
+      day: this.gameState.currentGameDay,
+      message: `Started new cycle with ${newStrain.name}. Germination in 3 days.`,
+      severity: "info",
+    });
 
     return this.getGameState();
   }
