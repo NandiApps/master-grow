@@ -41,6 +41,11 @@
   border-color: #27ae60;
 }
 
+.current-status.status-drifting {
+  background: rgba(243, 156, 18, 0.1);
+  border-color: #f5a623;
+}
+
 .status-display {
   display: flex;
   justify-content: space-between;
@@ -121,6 +126,10 @@
   background: #f39c12;
 }
 
+.range-indicator.status-drifting {
+  background: #f5a623;
+}
+
 .range-labels {
   display: flex;
   justify-content: space-between;
@@ -164,6 +173,11 @@
 .info-section.success {
   background: rgba(39, 174, 96, 0.1);
   border-left-color: #27ae60;
+}
+
+.info-section.drifting {
+  background: rgba(245, 166, 35, 0.1);
+  border-left-color: #f5a623;
 }
 
 .additive-list {

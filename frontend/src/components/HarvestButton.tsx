@@ -9,8 +9,9 @@ interface HarvestButtonProps {
 
 export function HarvestButton({ gameState, onHarvest, disabled }: HarvestButtonProps) {
   const plant = gameState.plant;
-  const canHarvest = plant.flowering.floweringInitiated && !disabled;
   const daysInFlower = plant.flowering.daysInFlower;
+  // Fix #12: gate harvest behind minimum 35 flower days to prevent premature harvest
+  const canHarvest = plant.flowering.floweringInitiated && daysInFlower >= 35 && !disabled;
   const strain = gameState.gameState.cycleInformation.selectedStrainName;
   const yieldTracking = plant.yieldTracking;
 
@@ -21,8 +22,8 @@ export function HarvestButton({ gameState, onHarvest, disabled }: HarvestButtonP
     if (yieldTracking && yieldTracking.daysSincePeak > 0) {
       return { text: `${yieldTracking.daysSincePeak} days past peak`, color: 'orange' };
     }
-    if (daysInFlower < 30) {
-      return { text: 'Still developing', color: 'blue' };
+    if (daysInFlower < 35) {
+      return { text: `${35 - daysInFlower} more days until harvestable`, color: 'blue' };
     }
     return { text: 'Ready to harvest', color: 'green' };
   };
@@ -62,10 +63,23 @@ export function HarvestButton({ gameState, onHarvest, disabled }: HarvestButtonP
         title={
           !plant.flowering.floweringInitiated
             ? 'Wait for flowering to start'
+            : daysInFlower < 35
+            ? `Minimum harvest age is day 35 of flower (${35 - daysInFlower} days remaining)`
             : 'Click to harvest and see quality assessment'
         }
       >
-        🌾 Harvest Now
+        {/* Polish #23: contextual harvest button label */}
+        {!plant.flowering.floweringInitiated
+          ? '🔒 Harvest Locked'
+          : daysInFlower < 35
+          ? `⏳ Too Early (Day ${daysInFlower}/35)`
+          : yieldTracking && yieldTracking.daysSincePeak > 5
+          ? '🚨 Harvest Now! (Over-ripe)'
+          : yieldTracking && yieldTracking.daysSincePeak > 0
+          ? '⚠️ Harvest (Past Peak)'
+          : plant.growthStage?.stage === 'harvest_ready'
+          ? '🌾 Harvest Now!'
+          : '🌾 Harvest'}
       </button>
     </div>
   );

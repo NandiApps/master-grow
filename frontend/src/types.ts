@@ -13,7 +13,7 @@ export interface GameDayActionRequest {
   parUmol: number;
   lightScheduleHoursOn: number;
   lightScheduleHoursOff: number;
-  waterTemperatureTarget: number;
+  airTemperatureTarget: number;   // renamed from waterTemperatureTarget (Fix #18)
   waterTemperatureCelsius?: number;
   co2TargetPpm?: number;
   exhaustFanPercent?: number;
@@ -118,6 +118,8 @@ export interface PlantState {
     stage: 'seedling' | 'vegetative' | 'early_flower' | 'late_flower' | 'harvest_ready';
     daysInStage: number;
     stageProgressPercent: number;
+    nextStage: string | null;
+    daysToNextStage: number;
   };
   lightResponse: {
     currentParUmol: number;
@@ -162,11 +164,22 @@ export interface TankState {
   gameDay: number;
   waterChemistry: {
     ph: number;
+    phDriftPerDay: number;
     ecMscm: number;
     ppm: number;
     totalDissolvedSolidsPpm: number;
     waterTemperatureCelsius: number;
     dissolvedOxygenMgPerLiter: number;
+    waterAgeDays: number;
+  };
+  additivesActive: {
+    chitosanMgPerLiter: number;
+    chitosanDaysSinceApplication: number | null;
+    mejaMgPerLiter: number;
+    kelpExtractConcentration: number;
+    mycorrhizaeApplied: boolean;
+    fungicideApplied: boolean;
+    fungicideDaysSince: number | null;
   };
   macroNutrients: {
     nitrogenNMgPerLiter: number;
@@ -178,6 +191,7 @@ export interface TankState {
   roomEnvironment: {
     airTemperatureCelsius: number;
     relativeHumidityPercent: number;
+    vaporPressureDeficitKpa: number;
     co2Ppm: number;
     lightParUmolPerM2PerS: number;
     airChangesPerHour: number;
@@ -247,7 +261,7 @@ export interface StrainGenetics {
 export interface AdditiveProduct {
   id: string;
   name: string;
-  type: 'silicon' | 'kelp' | 'chitosan' | 'meija';
+  type: 'silicon' | 'kelp' | 'chitosan' | 'meija' | 'calmag' | 'bloom' | 'grow' | 'mycorrhizae' | 'fungicide';
   costAud: number;
   bottleSizeMl: number;
   dosagePerTank20L: number;

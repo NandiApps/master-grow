@@ -6,6 +6,8 @@ interface MetricInfoModalProps {
   currentValue: number;
   min: number;
   max: number;
+  /** Override the optimal range shown in the bar — used for stage-aware metrics (N/P/K/EC/PPM) */
+  optimalOverride?: { min: number; max: number; ideal: number };
   onClose: () => void;
 }
 
@@ -14,20 +16,31 @@ export function MetricInfoModal({
   currentValue,
   min,
   max,
+  optimalOverride,
   onClose,
 }: MetricInfoModalProps) {
   const info = getMetricInfo(metricKey);
-
   if (!info) return null;
 
+  // Use stage-aware override when provided, otherwise fall back to database value
+  const optimalRange = optimalOverride ?? info.optimal;
+
   const getStatus = () => {
-    if (currentValue < min) return { class: 'status-low', label: 'LOW' };
-    if (currentValue > max) return { class: 'status-high', label: 'HIGH' };
+    if (currentValue < min) return { class: 'status-low',     label: 'LOW'     };
+    if (currentValue > max) return { class: 'status-high',    label: 'HIGH'    };
+
+    // Fix #9: "DRIFTING" warning when near the outer 20% of optimal range
+    const rangeWidth = optimalRange.max - optimalRange.min;
+    const isDrifting = rangeWidth > 0 && (
+      (currentValue >= optimalRange.max - rangeWidth * 0.2 && currentValue <= optimalRange.max) ||
+      (currentValue <= optimalRange.min + rangeWidth * 0.2 && currentValue >= optimalRange.min)
+    );
+    if (isDrifting) return { class: 'status-drifting', label: 'DRIFTING' };
+
     return { class: 'status-optimal', label: 'OPTIMAL' };
   };
 
   const status = getStatus();
-  const optimalRange = info.optimal;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -46,8 +59,8 @@ export function MetricInfoModal({
             </span>
           </div>
           <div className="range-info">
-            <span className="range-label">Your range: {min} - {max} {info.unit}</span>
-            <span className="optimal-label">Optimal: {optimalRange.min} - {optimalRange.max} {info.unit}</span>
+            <span className="range-label">Stage range: {min} – {max} {info.unit}</span>
+            <span className="optimal-label">Ideal: {optimalRange.min} – {optimalRange.max} {info.unit}</span>
           </div>
         </div>
 
@@ -57,16 +70,16 @@ export function MetricInfoModal({
             <div
               className="range-fill"
               style={{
-                left: `${((optimalRange.min - min) / (max - min)) * 100}%`,
-                width: `${((optimalRange.max - optimalRange.min) / (max - min)) * 100}%`,
+                left:  `${Math.max(0, ((optimalRange.min - min) / (max - min)) * 100)}%`,
+                width: `${Math.min(100, ((optimalRange.max - optimalRange.min) / (max - min)) * 100)}%`,
               }}
-            ></div>
+            />
             <div
               className={`range-indicator ${status.class}`}
               style={{
-                left: `${((currentValue - min) / (max - min)) * 100}%`,
+                left: `${Math.max(0, Math.min(100, ((currentValue - min) / (max - min)) * 100))}%`,
               }}
-            ></div>
+            />
           </div>
           <div className="range-labels">
             <span>{min}</span>
@@ -86,7 +99,6 @@ export function MetricInfoModal({
             <p>{info.why}</p>
           </section>
 
-          {/* Conditional warning based on status */}
           {status.class === 'status-low' && (
             <section className="info-section warning">
               <h3>⚠️ Your value is LOW</h3>
@@ -101,10 +113,17 @@ export function MetricInfoModal({
             </section>
           )}
 
+          {status.class === 'status-drifting' && (
+            <section className="info-section drifting">
+              <h3>🟡 Value is drifting toward the edge</h3>
+              <p>Still within range, but trending toward a problem. Take corrective action now to avoid falling out of the optimal zone. See adjustment steps below.</p>
+            </section>
+          )}
+
           {status.class === 'status-optimal' && (
             <section className="info-section success">
               <h3>✅ You're in the optimal range!</h3>
-              <p>Keep monitoring to maintain this level.</p>
+              <p>Keep monitoring daily to maintain this level.</p>
             </section>
           )}
 
@@ -119,7 +138,7 @@ export function MetricInfoModal({
           </section>
 
           <section className="info-section">
-            <h3>💊 Suggested Products</h3>
+            <h3>💊 Suggested Products / Controls</h3>
             <ul className="additive-list">
               {info.suggestedAdditives.map((additive, idx) => (
                 <li key={idx}>

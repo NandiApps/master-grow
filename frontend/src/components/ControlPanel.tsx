@@ -26,6 +26,7 @@ interface ControlPanelProps {
   selectedAdditives: Array<{ id: string; doseMl: number }>;
   onAdditivesChange: (additives: Array<{ id: string; doseMl: number }>) => void;
   gameClient: GameClient;
+  growthStage?: string;
 }
 
 interface Additive {
@@ -35,7 +36,7 @@ interface Additive {
   dosagePerTank20L: number;
 }
 
-export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, humidity, onHumidityChange, temperature, onTemperatureChange, waterTemperature, onWaterTemperatureChange, co2Ppm, onCo2Change, exhaustFanPercent, onExhaustFanChange, phUp, onPhUpChange, phDown, onPhDownChange, nutrientTopUp, onNutrientTopUpChange, selectedAdditives, onAdditivesChange, gameClient }: ControlPanelProps) {
+export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, humidity, onHumidityChange, temperature, onTemperatureChange, waterTemperature, onWaterTemperatureChange, co2Ppm, onCo2Change, exhaustFanPercent, onExhaustFanChange, phUp, onPhUpChange, phDown, onPhDownChange, nutrientTopUp, onNutrientTopUpChange, selectedAdditives, onAdditivesChange, gameClient, growthStage }: ControlPanelProps) {
   const [additives, setAdditives] = useState<Additive[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,8 +71,33 @@ export function ControlPanel({ parUmol, onParChange, lightHours, onLightChange, 
 
   const isAdditiveSelected = (additiveId: string) => selectedAdditives.some(a => a.id === additiveId);
 
+  // Stage-specific guidance for the control panel banner (Polish #20)
+  const stageHint: Record<string, { icon: string; text: string; color: string }> = {
+    seedling:      { icon: '🌱', text: 'Seedling: Keep PAR low (200–400 µmol), EC 0.8–1.2, pH 5.8–6.2. Establish roots before pushing nutrients.', color: 'rgba(100,200,100,0.15)' },
+    vegetative:    { icon: '🍃', text: 'Vegetative: Target 18h light. Boost N (Nutrient Top-Up + Grow Formula N+). Switch to 12h light to trigger flowering.', color: 'rgba(80,160,80,0.15)' },
+    early_flower:  { icon: '🌸', text: 'Early Flower: Switch to 12h ON. Reduce N, add Bloom Formula to boost P/K. Maintain humidity 40–50%.', color: 'rgba(200,100,150,0.15)' },
+    late_flower:   { icon: '🌺', text: 'Late Flower: Maintain P/K high, cut N further. Lower humidity to 40–45% to prevent botrytis. Inspect trichomes daily.', color: 'rgba(200,80,80,0.15)' },
+    harvest_ready: { icon: '🌾', text: 'Harvest Ready: Flush tank (plain pH water only, 3–5 days). Harvest when 70%+ trichomes are cloudy.', color: 'rgba(240,180,50,0.15)' },
+  };
+  const hint = growthStage ? stageHint[growthStage] : null;
+
   return (
     <div className="control-panel">
+      {hint && (
+        <div style={{
+          background: hint.color,
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: '8px',
+          padding: '0.6rem 0.8rem',
+          marginBottom: '0.75rem',
+          fontSize: '0.8rem',
+          color: '#ccc',
+          lineHeight: '1.4',
+        }}>
+          <strong style={{ color: '#fff' }}>{hint.icon} {growthStage?.replace('_', ' ').toUpperCase()}</strong>
+          <p style={{ margin: '0.25rem 0 0' }}>{hint.text}</p>
+        </div>
+      )}
       <h3 className="control-title">🎮 Daily Controls</h3>
       <div className="control-section">
         <label className="control-label"><span className="label-text">☀️ Light Intensity (PAR)</span><span className="value-display">{parUmol} µmol/m²/s</span></label>

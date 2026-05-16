@@ -10,45 +10,98 @@ interface Props {
 }
 
 export function DashboardPanel({ state }: Props) {
-  const plant = state.plant;
-  const tank = state.tank;
+  const plant     = state.plant;
+  const tank      = state.tank;
   const gameState = state.gameState;
 
-  // Get strain thresholds from gameState or use defaults
   const isFlowering = plant.flowering.floweringInitiated;
-  const thresholds = (gameState as any).selectedStrain?.nutrientThresholds;
+  const stage       = plant.growthStage.stage;
+  const thresholds  = (gameState as any).selectedStrain?.nutrientThresholds;
 
+  // Stage-aware nutrient thresholds (same logic as before, now also drives optimalOverride)
   const getThresholds = () => {
     if (thresholds) {
       return isFlowering ? thresholds.flowering : thresholds.vegetative;
     }
-    // Defaults if not available
     return isFlowering
-      ? {
-          ecMin: 1.6, ecMax: 2.0, ppmMin: 800, ppmMax: 1100,
-          nMin: 50, nMax: 100, pMin: 60, pMax: 90, kMin: 117, kMax: 175,
-        }
-      : {
-          ecMin: 1.3, ecMax: 1.7, ppmMin: 800, ppmMax: 900,
-          nMin: 160, nMax: 200, pMin: 30, pMax: 60, kMin: 60, kMax: 117,
-        };
+      ? { ecMin: 1.6, ecMax: 2.0, ppmMin: 800, ppmMax: 1100, nMin: 50,  nMax: 100, pMin: 60, pMax: 90, kMin: 117, kMax: 175 }
+      : { ecMin: 1.3, ecMax: 1.7, ppmMin: 800, ppmMax: 900,  nMin: 160, nMax: 200, pMin: 30, pMax: 60, kMin: 60,  kMax: 117 };
   };
 
-  const thr = getThresholds();
+  const thr          = getThresholds();
   const phThresholds = thresholds?.ph || { min: 5.5, optimal: 5.7, max: 6.5 };
   const tempThresholds = thresholds?.temperature || { min: 20, max: 26 };
-  const humThresholds = isFlowering
-    ? thresholds?.humidity?.flowering || { min: 40, max: 50 }
-    : thresholds?.humidity?.vegetative || { min: 40, max: 60 };
+  const humThresholds  = isFlowering
+    ? (thresholds?.humidity?.flowering || { min: 40, max: 50 })
+    : (thresholds?.humidity?.vegetative || { min: 40, max: 60 });
 
-  // Helper to check if value is critical/warning
+  // Stage label for the banner
+  const stageLabel: Record<string, string> = {
+    seedling:      '🌱 SEEDLING',
+    vegetative:    '🍃 VEGETATIVE',
+    early_flower:  '🌸 EARLY FLOWER',
+    late_flower:   '🌺 LATE FLOWER',
+    harvest_ready: '🌾 HARVEST READY',
+  };
+
+  // Stage-specific nutrient guidance for the banner
+  const stageNutrientGuide: Record<string, string> = {
+    seedling:      'Keep all nutrients low — pH 5.8–6.2, EC 0.8–1.2. Plant is establishing roots.',
+    vegetative:    'Target N 160–200 mg/L, P 30–60, K 60–117. Switch to 12h light to trigger flowering.',
+    early_flower:  '⬇️ Reduce N to 50–100 mg/L. ⬆️ Boost P (60–90) and K (117–175) with Bloom Formula.',
+    late_flower:   'Maintain P 60–90, K 117–175. Lower N further (<80). Monitor trichomes daily.',
+    harvest_ready: '🔬 Inspect trichomes — harvest when 70%+ cloudy. Flush 3–5 days before cutting.',
+  };
+
   const getStatus = (value: number, min: number, max: number) => ({
     isCritical: value < min || value > max,
-    isWarning: (value < min * 1.1 && value >= min) || (value <= max && value > max * 0.9),
+    isWarning:  (value < min * 1.1 && value >= min) || (value <= max && value > max * 0.9),
   });
+
+  // Active additive indicators
+  const chitosanDays = tank.additivesActive.chitosanDaysSinceApplication;
+  const chitosanActive = chitosanDays !== null && chitosanDays <= 10;
+  const fungicideActive = tank.additivesActive.fungicideApplied;
+  const mycorrhizaeApplied = tank.additivesActive.mycorrhizaeApplied;
+
+  // Stage progress
+  const progressPct = plant.growthStage.stageProgressPercent;
+  const daysToNext  = plant.growthStage.daysToNextStage;
 
   return (
     <div className="dashboard-panel">
+
+      {/* Stage Banner — Fix #22 + Polish #20 */}
+      <div className="dashboard-section stage-banner" style={{
+        background: 'rgba(100,200,100,0.08)',
+        border: '1px solid rgba(100,200,100,0.25)',
+        borderRadius: '8px',
+        padding: '0.75rem 1rem',
+        marginBottom: '0.5rem',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+            {stageLabel[stage] ?? stage.toUpperCase()}
+          </span>
+          <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
+            Day {plant.growthStage.daysInStage} / {daysToNext > 0 ? `${daysToNext}d to next` : 'stage complete'}
+          </span>
+        </div>
+        {/* Progress bar */}
+        <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', height: '6px', marginBottom: '0.5rem' }}>
+          <div style={{
+            background: stage === 'harvest_ready' ? '#f5a623' : '#4caf50',
+            width: `${progressPct}%`,
+            height: '100%',
+            borderRadius: '4px',
+            transition: 'width 0.3s ease',
+          }} />
+        </div>
+        <p style={{ fontSize: '0.75rem', color: '#bbb', margin: 0 }}>
+          {stageNutrientGuide[stage] ?? ''}
+        </p>
+      </div>
+
       {/* Health Overview */}
       <div className="dashboard-section">
         <HealthBar
@@ -57,6 +110,15 @@ export function DashboardPanel({ state }: Props) {
           isCritical={plant.physiology.plantHealthPercent < 30}
         />
       </div>
+
+      {/* Active Additives Status — Fix #19 */}
+      {(chitosanActive || fungicideActive || mycorrhizaeApplied) && (
+        <div className="dashboard-section" style={{ fontSize: '0.75rem', color: '#8bc34a', padding: '0.4rem 0' }}>
+          {chitosanActive   && <span style={{ marginRight: '0.75rem' }}>🧬 Chitosan active: Day {chitosanDays}/10</span>}
+          {fungicideActive  && <span style={{ marginRight: '0.75rem' }}>🛡️ Fungicide active: Day {tank.additivesActive.fungicideDaysSince}/7</span>}
+          {mycorrhizaeApplied && <span>🍄 Mycorrhizae: Root boost active</span>}
+        </div>
+      )}
 
       {/* Water Chemistry */}
       <div className="dashboard-section">
@@ -79,6 +141,7 @@ export function DashboardPanel({ state }: Props) {
             unit=" mS/cm"
             min={thr.ecMin}
             max={thr.ecMax}
+            optimalOverride={{ min: thr.ecMin, max: thr.ecMax, ideal: (thr.ecMin + thr.ecMax) / 2 }}
             {...getStatus(tank.waterChemistry.ecMscm, thr.ecMin, thr.ecMax)}
             icon="⚡"
             metricKey="ec"
@@ -89,6 +152,7 @@ export function DashboardPanel({ state }: Props) {
             unit=""
             min={thr.ppmMin}
             max={thr.ppmMax}
+            optimalOverride={{ min: thr.ppmMin, max: thr.ppmMax, ideal: (thr.ppmMin + thr.ppmMax) / 2 }}
             {...getStatus(tank.waterChemistry.ppm, thr.ppmMin, thr.ppmMax)}
             icon="📊"
             metricKey="ppm"
@@ -104,9 +168,15 @@ export function DashboardPanel({ state }: Props) {
             metricKey="waterTemperature"
           />
         </div>
+        {/* Fix #21: pH drift indicator */}
+        {tank.waterChemistry.phDriftPerDay > 0.03 && (
+          <p style={{ fontSize: '11px', color: '#f5a623', margin: '0.4rem 0 0', padding: '0 0.2rem' }}>
+            ⚠️ pH drifting −{tank.waterChemistry.phDriftPerDay.toFixed(3)}/day — use pH Up to compensate daily
+          </p>
+        )}
       </div>
 
-      {/* Nutrients */}
+      {/* Macronutrients */}
       <div className="dashboard-section">
         <h3 className="dashboard-section-title">🧂 Macronutrients (mg/L)</h3>
         <div className="metrics-grid">
@@ -116,6 +186,7 @@ export function DashboardPanel({ state }: Props) {
             unit=""
             min={thr.nMin}
             max={thr.nMax}
+            optimalOverride={{ min: thr.nMin, max: thr.nMax, ideal: (thr.nMin + thr.nMax) / 2 }}
             {...getStatus(tank.macroNutrients.nitrogenNMgPerLiter, thr.nMin, thr.nMax)}
             icon="N"
             metricKey="nitrogen"
@@ -126,6 +197,7 @@ export function DashboardPanel({ state }: Props) {
             unit=""
             min={thr.pMin}
             max={thr.pMax}
+            optimalOverride={{ min: thr.pMin, max: thr.pMax, ideal: (thr.pMin + thr.pMax) / 2 }}
             {...getStatus(tank.macroNutrients.phosphorusPMgPerLiter, thr.pMin, thr.pMax)}
             icon="P"
             metricKey="phosphorus"
@@ -136,6 +208,7 @@ export function DashboardPanel({ state }: Props) {
             unit=""
             min={thr.kMin}
             max={thr.kMax}
+            optimalOverride={{ min: thr.kMin, max: thr.kMax, ideal: (thr.kMin + thr.kMax) / 2 }}
             {...getStatus(tank.macroNutrients.potassiumKMgPerLiter, thr.kMin, thr.kMax)}
             icon="K"
             metricKey="potassium"
@@ -149,6 +222,17 @@ export function DashboardPanel({ state }: Props) {
             {...getStatus(tank.macroNutrients.calciumCaMgPerLiter, 100, 160)}
             icon="🥛"
             metricKey="calcium"
+          />
+          {/* Fix #17: Magnesium MetricCard was missing */}
+          <MetricCard
+            label="Magnesium (Mg)"
+            value={tank.macroNutrients.magnesiumMgMgPerLiter}
+            unit=""
+            min={40}
+            max={80}
+            {...getStatus(tank.macroNutrients.magnesiumMgMgPerLiter, 40, 80)}
+            icon="🔋"
+            metricKey="magnesium"
           />
         </div>
       </div>
@@ -196,6 +280,26 @@ export function DashboardPanel({ state }: Props) {
             {...getStatus(tank.roomEnvironment.co2Ppm, 400, 1500)}
             icon="🔬"
             metricKey="co2"
+          />
+          {/* VPD MetricCard — new metric combining temp + humidity */}
+          <MetricCard
+            label="VPD"
+            value={tank.roomEnvironment.vaporPressureDeficitKpa}
+            unit=" kPa"
+            min={0.4}
+            max={2.0}
+            optimalOverride={
+              isFlowering
+                ? { min: 1.0, max: 1.5, ideal: 1.2 }
+                : { min: 0.8, max: 1.2, ideal: 1.0 }
+            }
+            {...getStatus(
+              tank.roomEnvironment.vaporPressureDeficitKpa,
+              isFlowering ? 1.0 : 0.8,
+              isFlowering ? 1.5 : 1.2
+            )}
+            icon="💧"
+            metricKey="vpd"
           />
         </div>
       </div>

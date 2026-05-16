@@ -81,7 +81,7 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         parUmol,
         lightScheduleHoursOn: lightHours,
         lightScheduleHoursOff: 24 - lightHours,
-        waterTemperatureTarget: temperature,
+        airTemperatureTarget: temperature,
         waterTemperatureCelsius: waterTemperature,
         co2TargetPpm: co2Ppm,
         exhaustFanPercent: exhaustFanPercent,
@@ -120,7 +120,7 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
         parUmol,
         lightScheduleHoursOn: lightHours,
         lightScheduleHoursOff: 24 - lightHours,
-        waterTemperatureTarget: temperature,
+        airTemperatureTarget: temperature,
         waterTemperatureCelsius: waterTemperature,
         co2TargetPpm: co2Ppm,
         exhaustFanPercent: exhaustFanPercent,
@@ -296,6 +296,7 @@ export function GameScreen({ gameClient, sessionCode, onQuit }: Props) {
             selectedAdditives={selectedAdditives}
             onAdditivesChange={setSelectedAdditives}
             gameClient={gameClient}
+            growthStage={state.plant.growthStage.stage}
           />
         </div>
 

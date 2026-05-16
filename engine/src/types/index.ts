@@ -105,7 +105,7 @@ export interface StrainGenetics {
 export interface AdditiveProduct {
   id: string;
   name: string;
-  type: "silicon" | "kelp" | "chitosan" | "meija" | "calmag" | "bloom";
+  type: "silicon" | "kelp" | "chitosan" | "meija" | "calmag" | "bloom" | "grow" | "mycorrhizae" | "fungicide";
   costAud: number;
   bottleSizeMl: number;
   costPerMl: number;
@@ -132,6 +132,7 @@ export interface PlantPhysiology {
   rootMassDryWeightGrams: number;
   rootDevelopmentPercent: number;
   biomassDryWeightGrams: number;
+  electricityKwhToday: number; // Daily electricity usage (kWh), replaces siMg hack
 }
 
 export interface GrowthStage {
@@ -203,6 +204,8 @@ export interface StressIndicators {
   diseasePressureCounters?: {
     pmDaysExposed?: number;
     botrytilsDaysExposed?: number;
+    pmRecoveryDays?: number;
+    botrytisRecoveryDays?: number;
   };
 }
 
@@ -236,6 +239,7 @@ export interface YieldTracking {
 export interface PlantState {
   plantId: string;
   gameDay: number;
+  cycleStartDay?: number; // Absolute game day this cycle started (optional for save compat, defaults to 0)
   strainId: string;
   growCycleNumber: number;
 
@@ -308,6 +312,9 @@ export interface AdditivesActive {
   chitosanDaysSinceApplication: number | null;
   mejaMgPerLiter: number;
   kelpExtractConcentration: number;
+  mycorrhizaeApplied: boolean;      // Applied once per cycle — permanent root boost
+  fungicideApplied: boolean;        // Active when treating PM/botrytis
+  fungicideDaysSince: number | null; // Tracks fungicide window (active for 7 days)
 }
 
 export interface RoomEnvironment {
@@ -493,7 +500,7 @@ export interface GameDayActionRequest {
   parUmol: number;
   lightScheduleHoursOn: number;
   lightScheduleHoursOff: number;
-  waterTemperatureTarget: number; // Currently used for air temperature (legacy, mislabeled)
+  airTemperatureTarget: number; // Air temperature control (15-30°C)
   waterTemperatureCelsius?: number; // Actual water temperature control (18-24°C)
   humidityTarget: number;
   co2TargetPpm?: number; // CO₂ control (400-1500 ppm)

@@ -179,11 +179,11 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     what: 'Chlorophyll is the green pigment that captures light energy for photosynthesis.',
     why: 'Higher chlorophyll = more efficient photosynthesis and better growth. Measured as SPAD index or relative percentage.',
     optimal: { min: 40, max: 100, ideal: 75 },
-    tooLow: 'Low chlorophyll (below 40) indicates nitrogen deficiency or light stress, reducing photosynthesis and growth.',
-    tooHigh: 'Very high chlorophyll (above 100%) is rare and not typically problematic, though extremely dark leaves can reduce light penetration.',
+    tooLow: 'Low chlorophyll (below 40) indicates nitrogen deficiency or light stress, reducing photosynthesis and growth. Check your Nitrogen reading — chlorophyll builds directly from available N.',
+    tooHigh: 'Very high chlorophyll (above 100%) is not typically problematic, though extremely dark leaves can indicate excess nitrogen.',
     terpeneImpact: 'Chlorophyll efficiency directly correlates with energy available for terpene synthesis. Higher chlorophyll supports aromatic production.',
-    adjustment: 'Increase nitrogen if low. Ensure optimal light, temperature, and humidity. Improve overall plant health.',
-    suggestedAdditives: ['Nitrogen supplements', 'Foliar spray (quick chlorophyll boost)', 'Chelated iron (prevents yellowing)'],
+    adjustment: 'ACTION: Check Nitrogen level first — if N < 100 mg/L, add base nutrient. Ensure PAR is 400–800 µmol (seedling/veg) or 600–1000 µmol (flower). Maintain temp 20–26°C. Chlorophyll recovers within 3–5 days once N and light are corrected.',
+    suggestedAdditives: ['Nutrient Top-Up (raises N which feeds chlorophyll)', 'Grow Formula N+ (targeted N boost)', 'Light intensity slider (ensure adequate PAR)'],
   },
 
   rootMass: {
@@ -192,11 +192,11 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     what: 'Root mass is the total weight of root tissue (measured as dry weight, water removed).',
     why: 'Larger root systems absorb more water and nutrients, supporting vigorous growth and yield. Strong roots = strong plant.',
     optimal: { min: 1, max: 100, ideal: 50 },
-    tooLow: 'Weak roots (below 20g) indicate poor root development from disease, nutrient issues, or water temperature problems.',
-    tooHigh: 'Large roots (above 100g) are generally positive but may indicate overcrowded root zone or need for larger container.',
+    tooLow: 'Weak roots (below 20g) indicate poor root development from high water temperature, oxygen depletion, or inadequate nutrients. Root rot risk rises above 23°C water temperature.',
+    tooHigh: 'Large roots (above 100g) are generally positive and indicate excellent growing conditions.',
     terpeneImpact: 'Robust roots absorb all necessary nutrients for terpene synthesis. Root problems limit nutrient uptake and reduce terpene expression.',
-    adjustment: 'Optimize water temperature (18-24°C), pH, and dissolved oxygen. Use beneficial bacteria. Ensure good drainage.',
-    suggestedAdditives: ['Mycorrhizae (beneficial fungi)', 'Root stimulant products', 'Beneficial bacteria', 'Proper aeration'],
+    adjustment: 'ACTION: Apply 💊 Mykos Mycorrhizal Fungi once at transplant for a permanent root boost (+30% root growth rate). Keep water temp 18–22°C and ensure dissolved oxygen stays high via airstone. Check pH is 5.5–6.5 to prevent root rot.',
+    suggestedAdditives: ['Mykos Mycorrhizal Fungi (one-time permanent root boost)', 'Water Temperature slider (keep 18–22°C)', 'Cal-Mag (supports root cell development)'],
   },
 
   height: {
@@ -210,6 +210,32 @@ export const metricInfoDatabase: Record<string, MetricInfoData> = {
     terpeneImpact: 'Proper growth supports biomass and bud development. Stress from light/nutrients reduces terpene yield.',
     adjustment: 'Increase light intensity or move light closer. Check nitrogen levels. Ensure proper temperature and humidity.',
     suggestedAdditives: ['Stronger LED lights', 'Growth stimulants', 'Nitrogen (if deficient)'],
+  },
+
+  magnesium: {
+    name: 'Magnesium (Mg)',
+    unit: 'mg/L',
+    what: 'Magnesium is the central atom in every chlorophyll molecule and is essential for photosynthesis.',
+    why: 'Without adequate magnesium, the plant cannot build chlorophyll and photosynthesis collapses. Mg deficiency is common in fast-growing hydro plants because it is consumed quickly.',
+    optimal: { min: 40, max: 80, ideal: 60 },
+    tooLow: 'Magnesium deficiency causes interveinal chlorosis — yellowing between leaf veins on older leaves while veins stay green. Progresses to brown spots and leaf drop if untreated. Also reduces photosynthesis efficiency.',
+    tooHigh: 'Excess magnesium (>80 mg/L) blocks calcium uptake, causing calcium deficiency symptoms (tip burn, weak cell walls). Maintain Ca:Mg ratio near 3:1.',
+    terpeneImpact: 'Magnesium directly powers chlorophyll and photosynthesis — the energy engine for all terpene production. Deficiency causes a cascading drop in aromatic compound synthesis.',
+    adjustment: 'ACTION: Select 💊 Cal-Mag+ Supplement from additives. Standard dose: 10 mL per 20L tank raises Mg by ~12 mg/L. Target 40–80 mg/L. Apply every 7 days. Watch Ca:Mg ratio (ideal 3:1 — if Ca is also low, Cal-Mag raises both simultaneously).',
+    suggestedAdditives: ['Cal-Mag+ Supplement (raises Ca & Mg together)', 'Chitosan (improves micronutrient mobility)', 'Ensure pH 5.5–6.5 (Mg is best absorbed in this range)'],
+  },
+
+  vpd: {
+    name: 'VPD (Vapour Pressure Deficit)',
+    unit: 'kPa',
+    what: 'VPD measures the "drying power" of the air — how strongly the air wants to pull moisture from your plant. It combines temperature and humidity into a single strategic metric.',
+    why: 'VPD governs transpiration rate, which drives nutrient uptake. Too low (humid, cold air) = slow transpiration, nutrient starvation. Too high (hot, dry air) = excessive water loss, wilting, and stress.',
+    optimal: { min: 0.8, max: 1.5, ideal: 1.1 },
+    tooLow: 'Low VPD (<0.8 kPa) means air is near saturation — plant transpires slowly, nutrient uptake slows, and disease risk increases. Often from humidity >70% or temperatures <20°C.',
+    tooHigh: 'High VPD (>1.5 kPa) means dry hot air is pulling too much water from leaves. Plant closes stomata, reducing CO₂ uptake and growth. Often from temperature >28°C or humidity <35%.',
+    terpeneImpact: 'Optimal VPD drives steady transpiration which carries nutrients (including precursors to terpenes) from roots to leaves and buds. Extremes reduce terpene synthesis efficiency.',
+    adjustment: 'VEG target: 0.8–1.2 kPa | FLOWER target: 1.0–1.5 kPa. To raise VPD: increase temperature or reduce humidity. To lower VPD: reduce temperature or raise humidity. Adjust both sliders together for best results.',
+    suggestedAdditives: ['Temperature slider (primary VPD lever)', 'Humidity slider (secondary VPD lever)', 'Exhaust Fan (lowers humidity by up to 5% at 100%)'],
   },
 
   biomass: {

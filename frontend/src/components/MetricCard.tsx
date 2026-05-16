@@ -10,6 +10,8 @@ interface MetricCardProps {
   min: number;
   max: number;
   optimal?: number;
+  /** Stage-aware optimal override passed to the info modal */
+  optimalOverride?: { min: number; max: number; ideal: number };
   isCritical: boolean;
   isWarning: boolean;
   icon?: string;
@@ -25,6 +27,7 @@ export function MetricCard({
   min,
   max,
   optimal,
+  optimalOverride,
   isCritical,
   isWarning,
   icon,
@@ -131,6 +134,7 @@ export function MetricCard({
           currentValue={value}
           min={min}
           max={max}
+          optimalOverride={optimalOverride}
           onClose={() => setShowInfo(false)}
         />
       )}

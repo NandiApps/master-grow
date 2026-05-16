@@ -2,6 +2,20 @@
  * Core Simulation Engine - HydroGrow
  * 14-step daily plant growth and environment update cycle
  * Implements plant signaling mechanics via SuperSi and Chitosan
+ *
+ * FIXES APPLIED (audit 2026-05-16):
+ * #1  CO2 modifier corrected — >1000 ppm now boosts photosynthesis
+ * #2  Electricity tracked in physiology.electricityKwhToday (not siMg hack)
+ * #3  cycleStartDay used for stage calculation (fixes cycle-2 seedling skip)
+ * #5  totalStressPercent now computed from individual stress flags
+ * #6  nutrientLockoutActive cleared when pH recovers
+ * #7  Disease recovery takes 3 days; alerts cleared when conditions improve
+ * #10 qualityLossPercent uses linear degradation (fixed broken exponent formula)
+ * #11 pH lockout starts at 5.5/6.5 matching player-visible advice
+ * #13 biomassDryWeightGrams updated each day
+ * #16 Height growth Si modifier fixed (removed incorrect 0.1× scaling)
+ * VPD computed from temperature + humidity and written to roomEnvironment
+ * Mycorrhizae root boost and fungicide disease acceleration integrated
  */
 
 import {
@@ -21,7 +35,7 @@ import { getAdditive } from "../data/additives";
 
 export class SimulationEngine {
   /**
-   * Main daily simulation step - orchestrates 14 sub-steps
+   * Main daily simulation step — orchestrates sub-steps
    */
   updateDay(
     plant: PlantState,
@@ -29,10 +43,10 @@ export class SimulationEngine {
     parUmol: number,
     lightHoursOn: number,
     humidityTarget: number,
-    temperatureTarget: number
+    airTemperatureTarget: number
   ): void {
     const strain = getStrain(plant.strainId);
-    
+
     // Step 1: Light schedule transition (18/6 → 12/12 triggers flowering)
     this.updateLightSchedule(plant, lightHoursOn);
 
@@ -51,7 +65,10 @@ export class SimulationEngine {
     // Step 5.5: Chlorophyll development
     this.updateChlorophyll(plant, tank);
 
-    // Step 6: Root mass growth
+    // Step 5.7: Biomass update (fix #13 — was never updated)
+    this.updateBiomass(plant);
+
+    // Step 6: Root mass growth (mycorrhizae boost integrated)
     this.updateRootMass(plant, tank);
 
     // Step 7: Cannabinoid synthesis (CBDA during flower, PAR stress boost)
@@ -66,13 +83,16 @@ export class SimulationEngine {
     // Step 10: Nutrient deficiency symptoms
     this.updateDeficiencySymptoms(plant, tank);
 
-    // Step 11: Disease pressure modeling
+    // Step 11: Disease pressure modeling (recovery + alert cleanup)
     this.updateDiseasePressure(plant, tank);
 
-    // Step 12: Electricity usage tracking
+    // Step 11.5: Calculate total stress from all active flags (fix #5)
+    this.calculateTotalStress(plant, tank);
+
+    // Step 12: Electricity usage tracking (fix #2 — uses physiology field now)
     this.trackElectricity(plant, tank, parUmol);
 
-    // Step 13: Tank chemistry drift
+    // Step 13: Tank chemistry drift (pH, EC, VPD)
     this.updateTankChemistry(plant, tank);
 
     // Step 14: Update plant health (baseline decay + recovery bonus)
@@ -96,65 +116,55 @@ export class SimulationEngine {
     // Baseline daily maintenance cost: -0.5% per day (plants need constant care)
     let healthChange = -0.5;
 
-    // Recovery bonus if plant is well-managed
     const n = tank.macroNutrients.nitrogenNMgPerLiter;
     const p = tank.macroNutrients.phosphorusPMgPerLiter;
     const k = tank.macroNutrients.potassiumKMgPerLiter;
     const pH = tank.waterChemistry.ph;
 
-    // Check if nutrients are in good ranges
+    // Recovery bonus if plant is well-managed
     const nutrientsGood =
-      n >= 100 && n <= 180 &&
-      p >= 30 && p <= 60 &&
-      k >= 100 && k <= 180;
-
-    // Check if pH is optimal
+      n >= 100 && n <= 200 &&
+      p >= 30 && p <= 90 &&
+      k >= 60 && k <= 200;
     const pHGood = pH >= 5.5 && pH <= 6.5;
-
-    // Check if light is reasonable
     const lightGood = plant.lightResponse.currentParUmol >= 400 && plant.lightResponse.currentParUmol <= 1000;
 
-    // Bonus for good management (+0.3% per day)
     if (nutrientsGood && pHGood && lightGood) {
       healthChange += 0.3;
     }
-
-    // Additional recovery if photosynthesis rate is high
     if (plant.lightResponse.photosynthesisRateRelative > 0.7) {
       healthChange += 0.1;
     }
 
-    // Water temperature penalty: 2% health loss per 0.5°C above 23°C (root rot pathogen threshold)
+    // Water temperature penalty: 2% health loss per 0.5°C above 23°C
     const waterTemp = tank.waterChemistry.waterTemperatureCelsius;
     if (waterTemp > 23) {
-      const tempDegreeAboveThreshold = waterTemp - 23;
-      const penaltyPerHalfDegree = 2.0; // 2% per 0.5°C
-      const tempPenalty = (tempDegreeAboveThreshold / 0.5) * penaltyPerHalfDegree;
-      healthChange -= Math.min(5.0, tempPenalty); // Cap at -5% per day to prevent instant death
+      const degAbove = waterTemp - 23;
+      const tempPenalty = (degAbove / 0.5) * 2.0;
+      healthChange -= Math.min(5.0, tempPenalty);
     }
 
-    // Penalty for stress conditions
+    // Stress penalty (fix #5 — totalStressPercent is now computed)
     if (plant.stressIndicators.totalStressPercent > 30) {
-      healthChange -= Math.min(1.0, plant.stressIndicators.totalStressPercent / 100);
+      healthChange -= Math.min(1.5, plant.stressIndicators.totalStressPercent / 50);
     }
 
-    // Penalty for disease
+    // Disease penalty
     if (plant.visibleSymptoms.powderyMildew || plant.visibleSymptoms.botrytis) {
-      healthChange -= 1.0;
+      healthChange -= 1.5;
     }
 
-    // Store the change for UI display
     plant.physiology.plantHealthChangeTodayPercent = healthChange;
-
-    // Apply health change (cap at 0-100)
-    plant.physiology.plantHealthPercent = Math.max(0, Math.min(100, plant.physiology.plantHealthPercent + healthChange));
+    plant.physiology.plantHealthPercent = Math.max(0, Math.min(100,
+      plant.physiology.plantHealthPercent + healthChange
+    ));
   }
 
   private updateLightSchedule(plant: PlantState, lightHoursOn: number): void {
     plant.lightResponse.lightScheduleHoursOn = Math.min(24, lightHoursOn);
     plant.lightResponse.lightScheduleHoursOff = 24 - plant.lightResponse.lightScheduleHoursOn;
 
-    // Trigger flowering if transitioned to 12/12
+    // Trigger flowering if transitioned to ≤12h light while in vegetative stage
     if (
       !plant.flowering.floweringInitiated &&
       lightHoursOn <= 12 &&
@@ -166,7 +176,9 @@ export class SimulationEngine {
   }
 
   private updateGrowthStage(plant: PlantState, strain: StrainGenetics): void {
-    const daysFromStart = plant.gameDay;
+    // Fix #3: use cycle-relative day so cycle-2 plants start at seedling correctly
+    const cycleStartDay = plant.cycleStartDay ?? 0;
+    const daysFromStart = plant.gameDay - cycleStartDay;
     let newStage = plant.growthStage.stage;
 
     if (daysFromStart < 7) {
@@ -187,12 +199,12 @@ export class SimulationEngine {
     }
     plant.growthStage.daysInStage++;
 
-    // Calculate stage progress percentage
+    // Stage durations for progress calculation
     const stageDurations: { [key: string]: number } = {
       seedling: 7,
       vegetative: 21,
       early_flower: 21,
-      late_flower: strain.floweringTimeDays - 28,
+      late_flower: Math.max(1, strain.floweringTimeDays - 28),
       harvest_ready: 7,
     };
     const totalForStage = stageDurations[plant.growthStage.stage] || 7;
@@ -200,6 +212,8 @@ export class SimulationEngine {
       100,
       (plant.growthStage.daysInStage / totalForStage) * 100
     );
+    // Days to next stage (used by UI progress bar)
+    plant.growthStage.daysToNextStage = Math.max(0, totalForStage - plant.growthStage.daysInStage);
   }
 
   private calculatePhotosynthesisRate(
@@ -209,21 +223,25 @@ export class SimulationEngine {
   ): void {
     plant.lightResponse.currentParUmol = parUmol;
 
-    // PAR saturation at 1000 µmol
+    // PAR light curve (saturates at 1000 µmol)
     const saturationPoint = 1000;
     const lightCurve = Math.min(1.0, parUmol / saturationPoint);
 
     // Chlorophyll modifier
     const chlorophyllModifier = plant.physiology.chlorophyllPercent / 100;
 
-    // Temperature modifier (optimal 24°C)
+    // Temperature modifier (optimal 24°C, -5% per degree deviation)
     const tempOptimal = 24;
     const tempDiff = Math.abs(tank.roomEnvironment.airTemperatureCelsius - tempOptimal);
     const temperatureModifier = Math.max(0.3, 1 - tempDiff * 0.05);
 
-    // CO2 modifier (optimal 600+ ppm, minimum atmospheric baseline 400 ppm)
+    // Fix #1: CO2 modifier — >1000 ppm boosts photosynthesis, not penalises it
     const co2 = tank.roomEnvironment.co2Ppm;
-    const co2Modifier = co2 < 400 ? 0.5 : co2 > 1000 ? 0.8 : 1.0;
+    const co2Modifier = co2 < 400 ? 0.5
+      : co2 <= 800  ? 1.0
+      : co2 <= 1200 ? 1.2   // +20% boost in enrichment range
+      : co2 <= 1500 ? 1.1   // diminishing returns 1200–1500
+      : 0.9;                 // penalty only at extreme >1500
 
     plant.lightResponse.photosynthesisRateRelative =
       lightCurve * chlorophyllModifier * temperatureModifier * co2Modifier;
@@ -234,7 +252,7 @@ export class SimulationEngine {
     tank: TankState,
     strain: StrainGenetics
   ): void {
-    // Stage-dependent uptake rates (mg/day) - increased 5x for gameplay
+    // Stage-dependent base uptake rates (mg/day)
     let nUptake = 75;
     let pUptake = 40;
     let kUptake = 100;
@@ -254,33 +272,32 @@ export class SimulationEngine {
     pUptake *= plant.lightResponse.photosynthesisRateRelative;
     kUptake *= plant.lightResponse.photosynthesisRateRelative;
 
-    // pH lockout checking (optimal 5.5-6.5)
+    // Fix #11: pH lockout starts at the advice-matching 5.5–6.5 boundary
     const pH = tank.waterChemistry.ph;
     let phLockoutFactor = 1.0;
     if (pH < 5.0 || pH > 7.0) {
-      phLockoutFactor = 0.4;
+      // Severe lockout outside 5.0–7.0
+      phLockoutFactor = 0.3;
       plant.stressIndicators.nutrientLockoutActive = true;
+    } else if (pH < 5.5 || pH > 6.5) {
+      // Partial lockout in 5.0–5.5 and 6.5–7.0 bands
+      phLockoutFactor = 0.7;
+      plant.stressIndicators.nutrientLockoutActive = true;
+    } else {
+      // Fix #6: clear lockout flag when pH is back in safe range
+      phLockoutFactor = 1.0;
+      plant.stressIndicators.nutrientLockoutActive = false;
     }
 
     nUptake *= phLockoutFactor;
     pUptake *= phLockoutFactor;
     kUptake *= phLockoutFactor;
 
-    // Deduct from tank nutrients
-    tank.macroNutrients.nitrogenNMgPerLiter = Math.max(
-      0,
-      tank.macroNutrients.nitrogenNMgPerLiter - nUptake / tank.specifications.volumeLiters
-    );
-    tank.macroNutrients.phosphorusPMgPerLiter = Math.max(
-      0,
-      tank.macroNutrients.phosphorusPMgPerLiter - pUptake / tank.specifications.volumeLiters
-    );
-    tank.macroNutrients.potassiumKMgPerLiter = Math.max(
-      0,
-      tank.macroNutrients.potassiumKMgPerLiter - kUptake / tank.specifications.volumeLiters
-    );
+    const vol = tank.specifications.volumeLiters;
+    tank.macroNutrients.nitrogenNMgPerLiter   = Math.max(0, tank.macroNutrients.nitrogenNMgPerLiter   - nUptake / vol);
+    tank.macroNutrients.phosphorusPMgPerLiter = Math.max(0, tank.macroNutrients.phosphorusPMgPerLiter - pUptake / vol);
+    tank.macroNutrients.potassiumKMgPerLiter  = Math.max(0, tank.macroNutrients.potassiumKMgPerLiter  - kUptake / vol);
 
-    // Track daily uptake
     plant.nutrientUptakeToday.nMg = nUptake;
     plant.nutrientUptakeToday.pMg = pUptake;
     plant.nutrientUptakeToday.kMg = kUptake;
@@ -291,91 +308,92 @@ export class SimulationEngine {
     tank: TankState,
     strain: StrainGenetics
   ): void {
-    // Height growth (stage-dependent)
-    let heightGrowthMm = 15; // Base 15mm/day during veg
+    let heightGrowthMm = 15;
     if (plant.growthStage.stage === "seedling") {
       heightGrowthMm = 5;
     } else if (plant.growthStage.stage.includes("flower")) {
-      heightGrowthMm = 8; // Reduced during flower
+      heightGrowthMm = 8;
     }
 
-    // SuperSi boost (stem strengthening, PAR tolerance)
-    const siBoost = 1 + tank.microNutrients.siliconSiMgPerLiter / 100;
-    heightGrowthMm *= siBoost * 0.1; // 10% boost per 100 mg/L Si
+    // Fix #16: Si provides a proportional boost (up to 10% at 100 mg/L), not a 0.1× scale
+    const siBoost = 1 + (tank.microNutrients.siliconSiMgPerLiter / 100) * 0.1;
+    heightGrowthMm *= siBoost;
 
     plant.morphology.heightGrowthTodayMm = heightGrowthMm;
-    plant.morphology.heightCm += heightGrowthMm / 10;
-    plant.morphology.stemDiameterMm += heightGrowthMm * 0.15; // Proportional thickening
+    plant.morphology.heightCm           += heightGrowthMm / 10;
+    plant.morphology.stemDiameterMm     += heightGrowthMm * 0.015;
 
-    // LAI growth
     if (plant.growthStage.stage === "vegetative") {
       plant.morphology.leafAreaIndex += 0.3;
-    } else if (plant.growthStage.stage.includes("flower")) {
-      plant.morphology.leafAreaIndex += 0.1;
-    }
-
-    // Node/branch development during veg
-    if (plant.growthStage.stage === "vegetative") {
-      plant.morphology.nodeCount += 2;
+      plant.morphology.nodeCount     += 2;
       if (plant.morphology.nodeCount % 3 === 0) {
         plant.morphology.branchCount += 1;
       }
+    } else if (plant.growthStage.stage.includes("flower")) {
+      plant.morphology.leafAreaIndex += 0.1;
     }
   }
 
-  private updateChlorophyll(plant: PlantState, tank: TankState): void {
-    // Chlorophyll development based on light and health
-    let chlorophyllGrowth = 0.8; // Base 0.8% per day
+  private updateBiomass(plant: PlantState): void {
+    // Fix #13: biomassDryWeightGrams now grows each day based on plant development
+    const vegetativeContribution = plant.morphology.heightCm * 0.5 +
+      plant.morphology.leafAreaIndex * 10;
+    const rootContribution = plant.physiology.rootMassDryWeightGrams * 0.3;
+    const healthModifier = plant.physiology.plantHealthPercent / 100;
 
-    // Light-dependent (higher PAR = faster chlorophyll)
+    plant.physiology.biomassDryWeightGrams =
+      Math.max(2, (vegetativeContribution + rootContribution) * healthModifier);
+  }
+
+  private updateChlorophyll(plant: PlantState, tank: TankState): void {
+    let chlorophyllGrowth = 0.8;
+
     const parModifier = Math.min(1.5, plant.lightResponse.currentParUmol / 600);
     chlorophyllGrowth *= parModifier;
 
-    // Health-dependent
     const healthModifier = plant.physiology.plantHealthPercent / 100;
     chlorophyllGrowth *= healthModifier;
 
-    // N-dependent (nitrogen is critical for chlorophyll synthesis)
     const nAvailable = tank.macroNutrients.nitrogenNMgPerLiter;
     if (nAvailable < 50) {
-      chlorophyllGrowth *= 0.5; // Half growth if N is low
+      chlorophyllGrowth *= 0.5;
     } else if (nAvailable > 120) {
-      chlorophyllGrowth *= 1.2; // Boost if N is abundant
+      chlorophyllGrowth *= 1.2;
     }
 
-    // Stage-dependent
     if (plant.growthStage.stage === "seedling") {
-      chlorophyllGrowth *= 1.5; // Seedlings need fast chlorophyll development
+      chlorophyllGrowth *= 1.5;
     } else if (plant.growthStage.stage.includes("flower")) {
-      chlorophyllGrowth *= 0.7; // Reduced during flowering
+      chlorophyllGrowth *= 0.7;
     }
 
-    // Cap at 100% and grow from base
-    plant.physiology.chlorophyllPercent = Math.min(
-      100,
+    plant.physiology.chlorophyllPercent = Math.min(100,
       plant.physiology.chlorophyllPercent + chlorophyllGrowth
     );
   }
 
   private updateRootMass(plant: PlantState, tank: TankState): void {
-    // Base root growth 2 grams/day
     let rootGrowth = 2;
 
-    // N/P dependent
     const nAvailable = tank.macroNutrients.nitrogenNMgPerLiter;
     const pAvailable = tank.macroNutrients.phosphorusPMgPerLiter;
     const npFactor = Math.min(1.5, (nAvailable + pAvailable) / 100);
     rootGrowth *= npFactor;
 
-    // Hypoxia penalty (DO < 5 mg/L)
     if (tank.waterChemistry.dissolvedOxygenMgPerLiter < 5) {
       rootGrowth *= 0.5;
       plant.stressIndicators.hypoxiaActive = true;
+    } else {
+      plant.stressIndicators.hypoxiaActive = false;
+    }
+
+    // Mycorrhizae permanent root boost (+30% growth rate)
+    if (tank.additivesActive.mycorrhizaeApplied) {
+      rootGrowth *= 1.3;
     }
 
     plant.physiology.rootMassDryWeightGrams += rootGrowth;
-    plant.physiology.rootDevelopmentPercent = Math.min(
-      100,
+    plant.physiology.rootDevelopmentPercent = Math.min(100,
       plant.physiology.rootDevelopmentPercent + 2
     );
   }
@@ -385,35 +403,30 @@ export class SimulationEngine {
     tank: TankState,
     strain: StrainGenetics
   ): void {
-    // Only during flowering
     if (!plant.flowering.floweringInitiated) return;
 
-    // Base accumulation rate (0.5% per day during flower)
     let cbdaRate = 0.5;
     let thcaRate = strain.thcPercent / strain.floweringTimeDays;
 
-    // PAR stress boost (>900 µmol triggers senescence)
     if (plant.lightResponse.currentParUmol > 900) {
-      thcaRate *= 1.15; // 15% boost for high PAR
+      thcaRate *= 1.15;
     }
 
-    // Chitosan efficacy window (7-10 days active, peaks weeks 3-6 of flower)
     const daysInFlower = plant.flowering.daysInFlower;
     const chitosan = tank.additivesActive.chitosanMgPerLiter;
     const chitosanDaysSince = tank.additivesActive.chitosanDaysSinceApplication ?? 999;
 
     if (chitosan > 0 && chitosanDaysSince <= 10) {
-      const chitosanBoost = 1 + strain.responsivityToChitosan * 0.8; // Up to 80% boost
+      const chitosanBoost = 1 + strain.responsivityToChitosan * 0.8;
       thcaRate *= chitosanBoost;
-      cbdaRate *= 0.95; // Slight CBD suppression when THC is boosted
-
-      // Terpene enhancement (STEP 1 called for 78% CBDA, 95% terpene boost)
-      plant.flowering.budDensityScale1To10 *= 1.15; // Denser buds
+      cbdaRate *= 0.95;
+      plant.flowering.budDensityScale1To10 = Math.min(10,
+        plant.flowering.budDensityScale1To10 * 1.15
+      );
     }
 
-    // Peak production weeks 3-6 of flower
     if (daysInFlower >= 21 && daysInFlower <= 42) {
-      thcaRate *= 1.3; // 30% boost during peak window
+      thcaRate *= 1.3;
     }
 
     plant.cannabinoids.thcaAccumulationPercent = Math.min(
@@ -425,7 +438,6 @@ export class SimulationEngine {
       plant.cannabinoids.cbdaAccumulationPercent + cbdaRate
     );
 
-    // CBN (oxidized THC, increases with late harvest)
     if (daysInFlower > strain.floweringTimeDays - 7) {
       plant.cannabinoids.cbnAccumulationPercent += 0.1;
     }
@@ -434,48 +446,36 @@ export class SimulationEngine {
   private updateTrichomeMaturity(plant: PlantState, tank: TankState): void {
     if (!plant.flowering.floweringInitiated) return;
 
-    // Base maturation rate: 1% per day
     let maturationRate = 1.0;
 
-    // Temperature modifier (+1.2x at >26°C, -0.9x at <18°C)
     const temp = tank.roomEnvironment.airTemperatureCelsius;
     if (temp > 26) maturationRate *= 1.2;
     if (temp < 18) maturationRate *= 0.9;
 
-    // Humidity modifier (-0.9x at >70%, promoting mold risk)
     if (tank.roomEnvironment.relativeHumidityPercent > 70) {
       maturationRate *= 0.9;
     }
-
-    // PAR modifier (+1.15x at >1000 µmol)
     if (plant.lightResponse.currentParUmol > 1000) {
       maturationRate *= 1.15;
     }
-
-    // Chitosan boost (+1.05x)
     if (tank.additivesActive.chitosanMgPerLiter > 0) {
       maturationRate *= 1.05;
     }
 
-    // Progression: Clear → Cloudy → Amber
     const totalMaturity =
       plant.trichomeMaturity.clearTrichomesPercent +
       plant.trichomeMaturity.cloudyTrichomesPercent +
       plant.trichomeMaturity.amberTrichomesPercent;
 
     if (totalMaturity < 100) {
-      plant.trichomeMaturity.clearTrichomesPercent = Math.max(
-        0,
+      plant.trichomeMaturity.clearTrichomesPercent = Math.max(0,
         plant.trichomeMaturity.clearTrichomesPercent - maturationRate
       );
-      plant.trichomeMaturity.cloudyTrichomesPercent = Math.min(
-        100,
+      plant.trichomeMaturity.cloudyTrichomesPercent = Math.min(100,
         plant.trichomeMaturity.cloudyTrichomesPercent + maturationRate * 0.9
       );
-
       if (plant.trichomeMaturity.cloudyTrichomesPercent > 60) {
-        plant.trichomeMaturity.amberTrichomesPercent = Math.min(
-          100,
+        plant.trichomeMaturity.amberTrichomesPercent = Math.min(100,
           plant.trichomeMaturity.amberTrichomesPercent + maturationRate * 0.1
         );
       }
@@ -496,129 +496,194 @@ export class SimulationEngine {
         ((plant.lightResponse.currentParUmol - parThreshold) / 200) * 100
       );
 
-      // Damage without SuperSi
       const siMitigation = Math.min(1.0, tank.microNutrients.siliconSiMgPerLiter / 100);
-      const damageRate = (1 - siMitigation) * 0.5; // Up to 0.5% health loss/day without Si
-
-      plant.physiology.plantHealthPercent = Math.max(
-        0,
+      const damageRate = (1 - siMitigation) * 0.5;
+      plant.physiology.plantHealthPercent = Math.max(0,
         plant.physiology.plantHealthPercent - damageRate
       );
       plant.visibleSymptoms.lightBurn = true;
     } else {
       plant.stressIndicators.photoinhibitionActive = false;
       plant.lightResponse.photoinhibitionRiskPercent = 0;
+      plant.visibleSymptoms.lightBurn = false;
     }
   }
 
   private updateDeficiencySymptoms(plant: PlantState, tank: TankState): void {
-    const n = tank.macroNutrients.nitrogenNMgPerLiter;
-    const p = tank.macroNutrients.phosphorusPMgPerLiter;
-    const k = tank.macroNutrients.potassiumKMgPerLiter;
+    const n  = tank.macroNutrients.nitrogenNMgPerLiter;
+    const p  = tank.macroNutrients.phosphorusPMgPerLiter;
+    const k  = tank.macroNutrients.potassiumKMgPerLiter;
     const ca = tank.macroNutrients.calciumCaMgPerLiter;
     const mg = tank.macroNutrients.magnesiumMgMgPerLiter;
 
-    // Thresholds for visible symptoms (mg/L)
-    plant.visibleSymptoms.nitrogenDeficiency = n < 80;
-    plant.visibleSymptoms.phosphorusDeficiency = p < 30;
-    plant.visibleSymptoms.potassiumDeficiency = k < 100;
-    plant.visibleSymptoms.calciumDeficiency = ca < 120;
-    plant.visibleSymptoms.magnesiumDeficiency = mg < 40;
+    plant.visibleSymptoms.nitrogenDeficiency   = n  < 80;
+    plant.visibleSymptoms.phosphorusDeficiency = p  < 30;
+    plant.visibleSymptoms.potassiumDeficiency  = k  < 100;
+    plant.visibleSymptoms.calciumDeficiency    = ca < 120;
+    plant.visibleSymptoms.magnesiumDeficiency  = mg < 40;
 
-    // Health penalty for deficiencies
+    // Health penalty per active deficiency
     let healthPenalty = 0;
-    if (plant.visibleSymptoms.nitrogenDeficiency) healthPenalty += 0.5;
+    if (plant.visibleSymptoms.nitrogenDeficiency)   healthPenalty += 0.5;
     if (plant.visibleSymptoms.phosphorusDeficiency) healthPenalty += 0.3;
-    if (plant.visibleSymptoms.potassiumDeficiency) healthPenalty += 0.4;
-    if (plant.visibleSymptoms.calciumDeficiency) healthPenalty += 0.2;
-    if (plant.visibleSymptoms.magnesiumDeficiency) healthPenalty += 0.2;
+    if (plant.visibleSymptoms.potassiumDeficiency)  healthPenalty += 0.4;
+    if (plant.visibleSymptoms.calciumDeficiency)    healthPenalty += 0.2;
+    if (plant.visibleSymptoms.magnesiumDeficiency)  healthPenalty += 0.2;
 
-    plant.physiology.plantHealthPercent = Math.max(
-      0,
+    plant.physiology.plantHealthPercent = Math.max(0,
       plant.physiology.plantHealthPercent - healthPenalty
     );
   }
 
   private updateDiseasePressure(plant: PlantState, tank: TankState): void {
     const humidity = tank.roomEnvironment.relativeHumidityPercent;
-    const temp = tank.roomEnvironment.airTemperatureCelsius;
-    const airFlow = tank.roomEnvironment.airChangesPerHour;
+    const temp     = tank.roomEnvironment.airTemperatureCelsius;
+    const airFlow  = tank.roomEnvironment.airChangesPerHour;
 
-    // Initialize counters if needed
     if (!plant.stressIndicators.diseasePressureCounters) {
       plant.stressIndicators.diseasePressureCounters = {};
     }
+    const counters = plant.stressIndicators.diseasePressureCounters;
 
-    // Powdery mildew requires sustained bad conditions (>72 hours at >70% RH and <4 ACH)
+    // Fungicide halves recovery time (speeds up counter increments)
+    const fungicideActive = tank.additivesActive.fungicideApplied;
+    const recoveryIncrement = fungicideActive ? 2 : 1;
+
+    // ─── Powdery Mildew ───────────────────────────────────────────────
     const pmConditionsActive = humidity > 70 && airFlow < 4;
     if (pmConditionsActive) {
-      plant.stressIndicators.diseasePressureCounters.pmDaysExposed =
-        (plant.stressIndicators.diseasePressureCounters.pmDaysExposed || 0) + 1;
+      counters.pmRecoveryDays = 0; // reset recovery when conditions are bad
+      counters.pmDaysExposed = (counters.pmDaysExposed || 0) + 1;
 
-      // Show warning at day 1 of bad conditions
-      if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed === 1) {
+      if (counters.pmDaysExposed === 1) {
         if (!tank.warnings.includes("⚠️ Powdery mildew risk: High humidity & low airflow")) {
           tank.warnings.push("⚠️ Powdery mildew risk: High humidity & low airflow");
         }
       }
-
-      // Show at-risk status at day 2
-      if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed === 2) {
+      if (counters.pmDaysExposed === 2) {
         if (!tank.alerts.includes("🟡 PM at-risk (2/3 days bad conditions)")) {
           tank.alerts.push("🟡 PM at-risk (2/3 days bad conditions)");
         }
       }
-
-      // Symptoms appear at day 4
-      if (plant.stressIndicators.diseasePressureCounters.pmDaysExposed > 3) {
+      if (counters.pmDaysExposed > 3) {
         plant.visibleSymptoms.powderyMildew = true;
         if (!tank.alerts.includes("🔴 Powdery mildew detected")) {
           tank.alerts.push("🔴 Powdery mildew detected");
         }
       }
     } else {
-      plant.stressIndicators.diseasePressureCounters.pmDaysExposed = 0;
-      plant.visibleSymptoms.powderyMildew = false;
+      counters.pmDaysExposed = 0;
+      if (plant.visibleSymptoms.powderyMildew) {
+        // Fix #7: disease takes 3 days (or 2 with fungicide) to clear after conditions improve
+        counters.pmRecoveryDays = (counters.pmRecoveryDays || 0) + recoveryIncrement;
+        if (counters.pmRecoveryDays >= 3) {
+          plant.visibleSymptoms.powderyMildew = false;
+          counters.pmRecoveryDays = 0;
+          // Fix #7: remove stale alerts when disease clears
+          tank.alerts   = tank.alerts.filter(a => !a.includes('Powdery mildew') && !a.includes('PM at-risk'));
+          tank.warnings = tank.warnings.filter(w => !w.includes('Powdery mildew'));
+        }
+      } else {
+        // No disease and no bad conditions — clear any lingering warnings
+        counters.pmRecoveryDays = 0;
+        tank.warnings = tank.warnings.filter(w => !w.includes('Powdery mildew'));
+      }
     }
 
-    // Botrytis requires sustained bad conditions (>72 hours at >75% RH and <20°C)
+    // ─── Botrytis ─────────────────────────────────────────────────────
     const botrytisConditionsActive = humidity > 75 && temp < 20;
     if (botrytisConditionsActive) {
-      plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed =
-        (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed || 0) + 1;
+      counters.botrytisRecoveryDays = 0;
+      counters.botrytilsDaysExposed = (counters.botrytilsDaysExposed || 0) + 1;
 
-      // Show warning at day 1
-      if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed === 1) {
+      if (counters.botrytilsDaysExposed === 1) {
         if (!tank.warnings.includes("⚠️ Botrytis risk: High humidity & cold temps")) {
           tank.warnings.push("⚠️ Botrytis risk: High humidity & cold temps");
         }
       }
-
-      // Show at-risk status at day 2
-      if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed === 2) {
+      if (counters.botrytilsDaysExposed === 2) {
         if (!tank.alerts.includes("🟡 Botrytis at-risk (2/3 days bad conditions)")) {
           tank.alerts.push("🟡 Botrytis at-risk (2/3 days bad conditions)");
         }
       }
-
-      // Symptoms appear at day 4
-      if (plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed > 3) {
+      if (counters.botrytilsDaysExposed > 3) {
         plant.visibleSymptoms.botrytis = true;
         if (!tank.alerts.includes("🔴 Botrytis detected")) {
           tank.alerts.push("🔴 Botrytis detected");
         }
       }
     } else {
-      plant.stressIndicators.diseasePressureCounters.botrytilsDaysExposed = 0;
-      plant.visibleSymptoms.botrytis = false;
+      counters.botrytilsDaysExposed = 0;
+      if (plant.visibleSymptoms.botrytis) {
+        counters.botrytisRecoveryDays = (counters.botrytisRecoveryDays || 0) + recoveryIncrement;
+        if (counters.botrytisRecoveryDays >= 3) {
+          plant.visibleSymptoms.botrytis = false;
+          counters.botrytisRecoveryDays = 0;
+          tank.alerts   = tank.alerts.filter(a => !a.includes('Botrytis') && !a.includes('Botrytis at-risk'));
+          tank.warnings = tank.warnings.filter(w => !w.includes('Botrytis'));
+        }
+      } else {
+        counters.botrytisRecoveryDays = 0;
+        tank.warnings = tank.warnings.filter(w => !w.includes('Botrytis'));
+      }
     }
 
-    // Chitosan reduces disease risk 40%
+    // Disease health damage (chitosan reduces 40%)
     const chitosanFactor = tank.additivesActive.chitosanMgPerLiter > 0 ? 0.6 : 1.0;
-
     if (plant.visibleSymptoms.powderyMildew || plant.visibleSymptoms.botrytis) {
       plant.physiology.plantHealthPercent -= 2 * chitosanFactor;
     }
+  }
+
+  /**
+   * Fix #5 — Calculate totalStressPercent from all individual stress flags.
+   * Previously this was always 0, disabling all stress-based penalties.
+   */
+  private calculateTotalStress(plant: PlantState, tank: TankState): void {
+    let stress = 0;
+    const temp = tank.roomEnvironment.airTemperatureCelsius;
+    const rh   = tank.roomEnvironment.relativeHumidityPercent;
+
+    // Heat stress: >26°C
+    if (temp > 26) {
+      plant.stressIndicators.heatStressActive = true;
+      stress += Math.min(40, (temp - 26) * 5);
+    } else {
+      plant.stressIndicators.heatStressActive = false;
+    }
+
+    // Cold stress: <18°C
+    if (temp < 18) {
+      plant.stressIndicators.coldStressActive = true;
+      stress += Math.min(30, (18 - temp) * 5);
+    } else {
+      plant.stressIndicators.coldStressActive = false;
+    }
+
+    // Humidity stress: <30% or >75%
+    if (rh < 30 || rh > 75) {
+      plant.stressIndicators.humidityStressActive = true;
+      stress += 15;
+    } else {
+      plant.stressIndicators.humidityStressActive = false;
+    }
+
+    // Photoinhibition
+    if (plant.stressIndicators.photoinhibitionActive) {
+      stress += plant.lightResponse.photoinhibitionRiskPercent * 0.3;
+    }
+
+    // Nutrient lockout
+    if (plant.stressIndicators.nutrientLockoutActive) {
+      stress += 20;
+    }
+
+    // Hypoxia
+    if (plant.stressIndicators.hypoxiaActive) {
+      stress += 15;
+    }
+
+    plant.stressIndicators.totalStressPercent = Math.min(100, stress);
   }
 
   private trackElectricity(
@@ -626,41 +691,47 @@ export class SimulationEngine {
     tank: TankState,
     parUmol: number
   ): void {
-    // Estimate LED wattage from PAR
-    const estimatedLedWattage = (parUmol / 1000) * 400; // ~400W per 1000 µmol
+    const estimatedLedWattage = (parUmol / 1000) * 400;
     const dailyKwh = (estimatedLedWattage / 1000) * (plant.lightResponse.lightScheduleHoursOn / 24);
+    const heaterKwh = (tank.specifications.heaterWattage / 1000) * 0.5;
 
-    // + heater usage (estimated)
-    const heaterKwh = (tank.specifications.heaterWattage / 1000) * 0.5; // ~50% duty cycle
-    const totalKwh = dailyKwh + heaterKwh;
-
-    // Store for GameManager to deduct from cash
-    plant.nutrientUptakeToday.siMg = totalKwh * 100; // Store in siMg temporarily (scaled by 100 for precision)
+    // Fix #2: use dedicated field instead of hijacking nutrientUptakeToday.siMg
+    plant.physiology.electricityKwhToday = dailyKwh + heaterKwh;
   }
 
   private updateTankChemistry(plant: PlantState, tank: TankState): void {
     // pH drift from nitrogen uptake
     const nUptakeRate = plant.nutrientUptakeToday.nMg / 100;
-    tank.waterChemistry.phDriftPerDay = nUptakeRate * 0.1; // ~0.1 pH drop per 100mg N uptake
-    tank.waterChemistry.ph = Math.max(4.5, Math.min(8.5, tank.waterChemistry.ph - tank.waterChemistry.phDriftPerDay));
+    tank.waterChemistry.phDriftPerDay = nUptakeRate * 0.1;
+    tank.waterChemistry.ph = Math.max(4.5, Math.min(8.5,
+      tank.waterChemistry.ph - tank.waterChemistry.phDriftPerDay
+    ));
 
     // EC drift from nutrient depletion
     const totalNutrientDepletion =
       plant.nutrientUptakeToday.nMg +
       plant.nutrientUptakeToday.pMg +
       plant.nutrientUptakeToday.kMg;
-    tank.waterChemistry.ecMscm = Math.max(0, tank.waterChemistry.ecMscm - totalNutrientDepletion / 1000);
-    tank.waterChemistry.ppm = tank.waterChemistry.ecMscm * 640; // EC to PPM conversion
+    tank.waterChemistry.ecMscm = Math.max(0,
+      tank.waterChemistry.ecMscm - totalNutrientDepletion / 1000
+    );
+    tank.waterChemistry.ppm = tank.waterChemistry.ecMscm * 640;
 
-    // Water age tracking
+    // Water age
     tank.waterChemistry.waterAgeDays++;
-
-    // Trigger water change warning at >1150 ppm TDS
     if (tank.waterChemistry.totalDissolvedSolidsPpm > 1150) {
       if (!tank.warnings.includes("High TDS - water change recommended")) {
         tank.warnings.push("High TDS - water change recommended");
       }
     }
+
+    // VPD calculation (Tetens equation — °C input)
+    const temp = tank.roomEnvironment.airTemperatureCelsius;
+    const rh   = tank.roomEnvironment.relativeHumidityPercent;
+    const svp  = 0.6108 * Math.exp(17.27 * temp / (temp + 237.3)); // kPa saturated vapour pressure
+    tank.roomEnvironment.vaporPressureDeficitKpa = Math.max(0,
+      svp * (1 - rh / 100)
+    );
   }
 
   private updateYieldModifiers(
@@ -669,49 +740,36 @@ export class SimulationEngine {
     strain: StrainGenetics,
     parUmol: number
   ): void {
-    // healthFactor: 0.5 at 0% health, 1.0 at 80%+ health
     const health = plant.physiology.plantHealthPercent;
     plant.yieldModifiers.healthFactor = Math.max(0.3, health / 100);
 
-    // nutrientBalanceFactor: penalty if N, P, or K are out of range
     const n = tank.macroNutrients.nitrogenNMgPerLiter;
     const p = tank.macroNutrients.phosphorusPMgPerLiter;
     const k = tank.macroNutrients.potassiumKMgPerLiter;
 
-    // Optimal ranges: N 100-180, P 30-60, K 100-180
-    const nOptimal = n >= 100 && n <= 180 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(n - 140) / 200);
-    const pOptimal = p >= 30 && p <= 60 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(p - 45) / 60);
-    const kOptimal = k >= 100 && k <= 180 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(k - 140) / 200);
+    const nOptimal = n >= 100 && n <= 200 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(n - 150) / 200);
+    const pOptimal = p >= 30  && p <= 90  ? 1.0 : Math.max(0.5, 1.0 - Math.abs(p - 60)  / 60);
+    const kOptimal = k >= 60  && k <= 200 ? 1.0 : Math.max(0.5, 1.0 - Math.abs(k - 130) / 200);
     plant.yieldModifiers.nutrientBalanceFactor = (nOptimal + pOptimal + kOptimal) / 3;
 
-    // lightEfficiencyFactor: penalty if PAR is out of optimal range (600-1000 µmol)
     const parOptimalMin = 600;
     const parOptimalMax = 1000;
     let lightFactor = 1.0;
     if (parUmol < parOptimalMin) {
-      lightFactor = 0.5 + (parUmol / parOptimalMin) * 0.5; // 0.5 at 0 PAR, 1.0 at 600
+      lightFactor = 0.5 + (parUmol / parOptimalMin) * 0.5;
     } else if (parUmol > parOptimalMax) {
-      lightFactor = 1.0 - ((parUmol - parOptimalMax) / 200) * 0.3; // Penalize high PAR
+      lightFactor = 1.0 - ((parUmol - parOptimalMax) / 200) * 0.3;
     }
     plant.yieldModifiers.lightEfficiencyFactor = Math.max(0.3, lightFactor);
 
-    // stressPenaltyFactor: penalty based on total stress percentage
     const stressPercent = plant.stressIndicators.totalStressPercent || 0;
     plant.yieldModifiers.stressPenaltyFactor = Math.max(0.5, 1.0 - stressPercent / 100);
   }
 
   private resetDailyTracking(plant: PlantState): void {
-    // Store previous day's growth for UI display (will be cleared at START of next day)
-    // plant.morphology.heightGrowthTodayMm is intentionally NOT reset here
-
     plant.physiology.chlorophyllChangeTodayPercent = 0;
     plant.physiology.plantHealthChangeTodayPercent = 0;
-    // nutrientUptakeToday kept for cycle end tracking
-
-    // Decay additive presence
-    if (plant.gameDay % 7 === 0) {
-      // Fade additives weekly
-    }
+    // nutrientUptakeToday kept for display; siMg field no longer used for electricity
   }
 
   private updateYieldTracking(
@@ -719,40 +777,27 @@ export class SimulationEngine {
     tank: TankState,
     strain: any
   ): void {
-    const daysInFlower = plant.flowering.daysInFlower;
+    const daysInFlower  = plant.flowering.daysInFlower;
     const floweringDays = strain.floweringTimeDays;
 
-    // Calculate current yield estimate
-    const healthFactor = Math.max(0.3, plant.physiology.plantHealthPercent / 100);
+    const healthFactor   = Math.max(0.3, plant.physiology.plantHealthPercent / 100);
     const nutrientFactor = plant.yieldModifiers.nutrientBalanceFactor;
-    const lightFactor = plant.yieldModifiers.lightEfficiencyFactor;
-    const stressFactor = plant.yieldModifiers.stressPenaltyFactor;
+    const lightFactor    = plant.yieldModifiers.lightEfficiencyFactor;
+    const stressFactor   = plant.yieldModifiers.stressPenaltyFactor;
 
-    // Get yield progression percentage for current day
     let progressionPercent = 0;
-    if (daysInFlower <= 7) {
-      progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent * 0.5;
-    } else if (daysInFlower <= 14) {
-      progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent * 0.7;
-    } else if (daysInFlower <= 21) {
-      progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent;
-    } else if (daysInFlower <= 28) {
-      progressionPercent = strain.yieldProfile.yieldProgressionWeek6Percent;
-    } else if (daysInFlower <= 35) {
-      progressionPercent = strain.yieldProfile.yieldProgressionWeek7Percent;
-    } else {
-      progressionPercent = strain.yieldProfile.yieldProgressionWeek8Percent;
-    }
+    if (daysInFlower <= 7)       progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent * 0.5;
+    else if (daysInFlower <= 14) progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent * 0.7;
+    else if (daysInFlower <= 21) progressionPercent = strain.yieldProfile.yieldProgressionWeek5Percent;
+    else if (daysInFlower <= 28) progressionPercent = strain.yieldProfile.yieldProgressionWeek6Percent;
+    else if (daysInFlower <= 35) progressionPercent = strain.yieldProfile.yieldProgressionWeek7Percent;
+    else                         progressionPercent = strain.yieldProfile.yieldProgressionWeek8Percent;
 
     let currentYield =
       strain.yieldProfile.yieldGramsTypical *
       (progressionPercent / 100) *
-      healthFactor *
-      nutrientFactor *
-      lightFactor *
-      stressFactor;
+      healthFactor * nutrientFactor * lightFactor * stressFactor;
 
-    // Post-peak degradation: yield decreases after optimal harvest day
     if (daysInFlower > floweringDays) {
       const daysOverdue = daysInFlower - floweringDays;
       const degradationRate = strain.yieldProfile.degradationPercentPerDay;
@@ -760,61 +805,48 @@ export class SimulationEngine {
       currentYield *= Math.max(0.5, qualityLoss);
     }
 
-    // Update yield tracking
     const previousYield = plant.yieldTracking.currentEstimateGrams;
     plant.yieldTracking.currentEstimateGrams = Math.round(currentYield * 10) / 10;
 
-    // Detect peak yield (yield stopped increasing)
-    if (
-      plant.yieldTracking.peakYieldDay === null &&
-      previousYield > plant.yieldTracking.currentEstimateGrams
-    ) {
-      plant.yieldTracking.peakYieldDay = plant.flowering.daysInFlower - 1;
+    if (plant.yieldTracking.peakYieldDay === null && previousYield > plant.yieldTracking.currentEstimateGrams) {
+      plant.yieldTracking.peakYieldDay   = plant.flowering.daysInFlower - 1;
       plant.yieldTracking.peakYieldGrams = previousYield;
     }
 
-    // Update days since peak
     if (plant.yieldTracking.peakYieldDay !== null) {
       plant.yieldTracking.daysSincePeak = daysInFlower - plant.yieldTracking.peakYieldDay;
     }
 
-    // Calculate quality loss due to post-peak degradation
+    // Fix #10: linear degradation (was (rate/100)^days which approached 0 instantly)
     if (plant.yieldTracking.daysSincePeak > 0) {
-      const degradationRate = strain.yieldProfile.degradationPercentPerDay;
       plant.yieldTracking.qualityLossPercent = Math.min(
         100,
-        (degradationRate / 100) ** plant.yieldTracking.daysSincePeak * 100
+        plant.yieldTracking.daysSincePeak * strain.yieldProfile.degradationPercentPerDay
       );
     }
 
-    // Update trichome maturity for quality estimation
-    const clearPercent = plant.trichomeMaturity.clearTrichomesPercent;
+    // Trichome-based quality scoring
+    const clearPercent  = plant.trichomeMaturity.clearTrichomesPercent;
     const cloudyPercent = plant.trichomeMaturity.cloudyTrichomesPercent;
-    const amberPercent = plant.trichomeMaturity.amberTrichomesPercent;
+    const amberPercent  = plant.trichomeMaturity.amberTrichomesPercent;
 
-    const peakClear = strain.yieldProfile.trichomePeakClearPercent;
+    const peakClear  = strain.yieldProfile.trichomePeakClearPercent;
     const peakCloudy = strain.yieldProfile.trichomePeakCloudyPercent;
-    const peakAmber = strain.yieldProfile.trichomePeakAmberPercent;
+    const peakAmber  = strain.yieldProfile.trichomePeakAmberPercent;
 
-    // Simple trichome quality score
-    const clearDiff = Math.abs(clearPercent - peakClear);
+    const clearDiff  = Math.abs(clearPercent  - peakClear);
     const cloudyDiff = Math.abs(cloudyPercent - peakCloudy);
-    const amberDiff = Math.abs(amberPercent - peakAmber);
-    const totalDiff = (clearDiff + cloudyDiff + amberDiff) / 3;
+    const amberDiff  = Math.abs(amberPercent  - peakAmber);
+    const totalDiff  = (clearDiff + cloudyDiff + amberDiff) / 3;
+
     plant.yieldTracking.harvestQualityScore = Math.max(
       0,
       100 - totalDiff * 5 - plant.yieldTracking.qualityLossPercent
     );
 
-    // Set quality tier
-    if (plant.yieldTracking.harvestQualityScore >= 90) {
-      plant.yieldTracking.qualityTier = "S";
-    } else if (plant.yieldTracking.harvestQualityScore >= 75) {
-      plant.yieldTracking.qualityTier = "A";
-    } else if (plant.yieldTracking.harvestQualityScore >= 60) {
-      plant.yieldTracking.qualityTier = "B";
-    } else {
-      plant.yieldTracking.qualityTier = "C";
-    }
+    if      (plant.yieldTracking.harvestQualityScore >= 90) plant.yieldTracking.qualityTier = "S";
+    else if (plant.yieldTracking.harvestQualityScore >= 75) plant.yieldTracking.qualityTier = "A";
+    else if (plant.yieldTracking.harvestQualityScore >= 60) plant.yieldTracking.qualityTier = "B";
+    else                                                    plant.yieldTracking.qualityTier = "C";
   }
 }

@@ -66,6 +66,42 @@ export const ADDITIVES_DATABASE: Record<string, AdditiveProduct> = {
     dosagePerTank20L: 8,
     applicationFrequencyDays: 3,
   },
+  "grow-formula-n": {
+    // Based on Super N+ (Just Hydroponics AU) — nitrogen booster for veg
+    // Raises N without spiking P/K: useful when N drops in veg but P/K are already adequate
+    id: "grow-formula-n",
+    name: "Grow Formula N+ (N Boost)",
+    type: "grow",
+    costAud: 28.0,
+    bottleSizeMl: 500,
+    costPerMl: 0.056,
+    dosagePerTank20L: 10,       // 10 mL → +40 mg/L N, +5 mg/L P, +8 mg/L K in 20L
+    applicationFrequencyDays: 7,
+  },
+  "mykos-mycorrhizae": {
+    // Based on Xtreme Gardening Mykos (Logan Hydroponics AU ~$32/100g)
+    // Apply once at transplant day 7 for permanent root development boost
+    id: "mykos-mycorrhizae",
+    name: "Mykos Mycorrhizal Fungi",
+    type: "mycorrhizae",
+    costAud: 32.0,
+    bottleSizeMl: 100,           // 100g sachet — dosage in mL maps to grams here
+    costPerMl: 0.32,
+    dosagePerTank20L: 5,         // 5g per application
+    applicationFrequencyDays: 999, // One-time per cycle
+  },
+  "eco-fungicide": {
+    // Based on Eco-Carb Potassium Bicarbonate Fungicide (Bunnings AU ~$22/250mL)
+    // Treats active powdery mildew and botrytis — halves recovery time
+    id: "eco-fungicide",
+    name: "Eco-Fungicide (PM / Botrytis)",
+    type: "fungicide",
+    costAud: 22.0,
+    bottleSizeMl: 250,
+    costPerMl: 0.088,
+    dosagePerTank20L: 10,        // 10 mL per 20L; active for 7 days
+    applicationFrequencyDays: 7,
+  },
 };
 
 export function getAdditive(additiveId: string): AdditiveProduct {
@@ -81,7 +117,7 @@ export function listAdditives(): AdditiveProduct[] {
 }
 
 export function listAdditivesByType(
-  type: "silicon" | "kelp" | "chitosan" | "meija" | "calmag" | "bloom"
+  type: "silicon" | "kelp" | "chitosan" | "meija" | "calmag" | "bloom" | "grow" | "mycorrhizae" | "fungicide"
 ): AdditiveProduct[] {
   return Object.values(ADDITIVES_DATABASE).filter((a) => a.type === type);
 }
